@@ -20,12 +20,11 @@ class KidSpeechEngine {
     this.lastTutorText = ''; // 브릭키가 마지막으로 말한 문장 (자기 소리 필터용)
     this.pausedForTTS = false; // TTS 중 마이크 완전 중단 여부
 
-    // 🌟 시우의 발화 호흡에 맞춘 자연스러운 디바운스 타이머 (기본 1.6초 대기 후 자동 전송)
+    // 🌟 시우의 발화 호흡에 맞춘 자연스러운 지능형 디바운스 (기본 2.6초 대기 후 전송, 끊김 방지)
     this.speechBuffer = '';
     this.latestInterim = '';
     this.speechEndTimer = null;
-    this.speechEndDelayMs = parseInt(localStorage.getItem('bricktalk_wait_time') || '1600', 10);
-
+    this.speechEndDelayMs = parseInt(localStorage.getItem('bricktalk_wait_time') || '2600', 10);
 
     this.initVoices();
     this.initRecognition();
@@ -92,7 +91,7 @@ class KidSpeechEngine {
       this.recognition.lang = this.currentLang;
       this.recognition.continuous = true;
       this.recognition.interimResults = true; // 실시간 발화 즉각 감지
-      this.recognition.maxAlternatives = 3;
+      this.recognition.maxAlternatives = 5;
 
       this.recognition.onstart = () => {
         this.isListening = true;
@@ -122,7 +121,7 @@ class KidSpeechEngine {
 
       this.recognition.onresult = (event) => {
         try {
-          // 🛡️ 에코 캔슬 게이트 1: 브릭키가 말하고 있거나 쿨다운 중이면 스피커 소리이므로 무시!
+          // 🛡️ 에코 캔슬 게이트 1: 브릭키가 말하고 있거나 직후 쿨다운 중이면 스피커 소리이므로 무시!
           const now = Date.now();
           if (this.isTutorSpeaking || now < this.speakerCooldownUntil) {
             return;
@@ -131,39 +130,42 @@ class KidSpeechEngine {
           let interimTranscript = '';
           let finalTranscript = '';
           const self = this;
-          // 🛡️ 에코 게이트 2: 브릭키 문장과 단어가 50% 이상 겹치면 스피커 소리로 간주
-          const isEcho = (t) => {
-            const norm = (s) => (s || '').toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(w => w.length > 1);
-            const a = norm(t);
-            const b = new Set(norm(self.lastTutorText));
-            if (a.length < 3 || b.size === 0) return false;
-            return a.filter(w => b.has(w)).length / a.length >= 0.5;
+
+          // 🛡️ 에코 판정 개선: 오직 튜터 문장 전체와 거의 동일한 기계적 하울링일 때만 에코로 판정.
+          // (시우가 튜터의 말을 따라 하거나 같은 단어를 쓰는 정상적인 학습 발화는 절대로 차단하지 않음!)
+          const isIdenticalEcho = (t) => {
+            const clean = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const a = clean(t);
+            const b = clean(self.lastTutorText);
+            if (a.length > 15 && b.length > 15 && (a === b || b.includes(a))) {
+              return true;
+            }
+            return false;
           };
 
           for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript;
+            // 후보군 중 가장 신뢰도 높은 발화 획득
+            const result = event.results[i];
+            const transcript = result[0].transcript;
+            if (result.isFinal) {
+              finalTranscript += transcript + ' ';
             } else {
               interimTranscript += transcript;
             }
           }
 
-          if (isEcho(interimTranscript + ' ' + finalTranscript)) return;
+          if (isIdenticalEcho(interimTranscript + ' ' + finalTranscript)) return;
 
           // 실시간 중간 발화(Interim) 콜백 (시우가 말하고 있음을 화면에 즉시 반응)
           if (interimTranscript) {
             const cleanInterim = this.sanitizeInput(interimTranscript);
             if (cleanInterim.length > 0) {
               this.latestInterim = cleanInterim;
-              const preview = (this.speechBuffer ? this.speechBuffer + ' ' : '') + cleanInterim;
+              const preview = (this.speechBuffer ? this.speechBuffer.trim() + ' ' : '') + cleanInterim;
               if (this.onInterimCallback) this.onInterimCallback(preview);
 
-              // 🌟 [핵심] 브라우저가 isFinal을 주지 않아도, 시우가 말을 멈추고 1.5초 지나면 무조건 자동 확정 전송!
-              if (this.speechEndTimer) clearTimeout(this.speechEndTimer);
-              this.speechEndTimer = setTimeout(() => {
-                this.flushSpeechBuffer();
-              }, this.speechEndDelayMs);
+              // 🌟 지능형 디바운스: 문장 미완성(전치사/접속사/단어 1개)이면 여유 있게 3.2초 대기, 완성형이면 2.4초 대기
+              this.scheduleSpeechFlush(preview);
             }
           }
 
@@ -171,15 +173,12 @@ class KidSpeechEngine {
           if (finalTranscript) {
             const sanitized = this.sanitizeInput(finalTranscript);
             if (sanitized && sanitized.replace(/\s/g, '').length >= 1) {
-              this.speechBuffer = (this.speechBuffer ? this.speechBuffer + ' ' : '') + sanitized;
+              this.speechBuffer = (this.speechBuffer ? this.speechBuffer.trim() + ' ' : '') + sanitized;
               this.latestInterim = '';
               if (this.onInterimCallback) {
-                this.onInterimCallback(this.speechBuffer);
+                this.onInterimCallback(this.speechBuffer.trim());
               }
-              if (this.speechEndTimer) clearTimeout(this.speechEndTimer);
-              this.speechEndTimer = setTimeout(() => {
-                this.flushSpeechBuffer();
-              }, this.speechEndDelayMs);
+              this.scheduleSpeechFlush(this.speechBuffer.trim());
             }
           }
         } catch (err) {
@@ -189,6 +188,29 @@ class KidSpeechEngine {
     } catch (e) {
       console.warn('[STT 예외 차단]:', e);
     }
+  }
+
+  /**
+   * 🌟 문장 완성도에 맞춘 동적 디바운스 타이머 스케줄러 (중간 끊김 원천 차단)
+   */
+  scheduleSpeechFlush(currentText) {
+    if (this.speechEndTimer) {
+      clearTimeout(this.speechEndTimer);
+    }
+    
+    // 미완성 문장(전치사, 접속사, 의문사, 1단어)일 경우 아동의 호흡을 고려하여 대기시간 1초 추가 부여
+    const words = (currentText || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const lastWord = words[words.length - 1] || '';
+    const incompleteMarkers = ['i', 'a', 'the', 'my', 'your', 'in', 'on', 'at', 'to', 'for', 'with', 'and', 'but', 'or', 'what', 'how', 'why', 'can', 'do', 'like'];
+    
+    let delay = this.speechEndDelayMs;
+    if (words.length <= 1 || incompleteMarkers.includes(lastWord)) {
+      delay = Math.max(delay, 3200); // 숨 고르고 다음 단어를 말할 수 있도록 넉넉한 3.2초 확보
+    }
+
+    this.speechEndTimer = setTimeout(() => {
+      this.flushSpeechBuffer();
+    }, delay);
   }
 
   /**
@@ -216,7 +238,7 @@ class KidSpeechEngine {
    * 시우의 호흡에 맞춘 대기 시간 변경 (ms)
    */
   setSpeechWaitTime(ms) {
-    this.speechEndDelayMs = Math.max(1500, Math.min(8000, ms));
+    this.speechEndDelayMs = Math.max(2000, Math.min(8000, ms));
     try { localStorage.setItem('bricktalk_wait_time', String(this.speechEndDelayMs)); } catch (e) {}
   }
 
@@ -360,8 +382,8 @@ class KidSpeechEngine {
         }
         this.isTutorSpeaking = false;
         this.pausedForTTS = false;
-        // 발화 후 1.3초 동안 마이크 재유입 차단
-        this.speakerCooldownUntil = Date.now() + 1300;
+        // 🌟 쿨다운 300ms로 최적화 (첫 음절 잘림 원천 차단: 마이크가 열릴 때 즉시 정상 수신)
+        this.speakerCooldownUntil = Date.now() + 300;
         if (onEnd) onEnd();
       };
 
@@ -371,7 +393,7 @@ class KidSpeechEngine {
       this.synth.speak(utterance);
     } catch (e) {
       this.isTutorSpeaking = false;
-      this.speakerCooldownUntil = Date.now() + 700;
+      this.speakerCooldownUntil = Date.now() + 200;
       if (onEnd) onEnd();
     }
   }
