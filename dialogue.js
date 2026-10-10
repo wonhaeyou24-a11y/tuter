@@ -14,7 +14,7 @@ class BrickyDialogueEngine {
     this.conversationHistory = [];
     this.currentContextTopic = 'greeting';
     this.currentContextStep = 0;
-    this.geminiApiKey = localStorage.getItem('bricktalk_gemini_key') || '';
+    this.geminiApiKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('bricktalk_gemini_key') : '') || '';
   }
 
   /**
@@ -22,10 +22,12 @@ class BrickyDialogueEngine {
    */
   setGeminiApiKey(key) {
     this.geminiApiKey = (key || '').trim();
-    if (this.geminiApiKey) {
-      localStorage.setItem('bricktalk_gemini_key', this.geminiApiKey);
-    } else {
-      localStorage.removeItem('bricktalk_gemini_key');
+    if (typeof localStorage !== 'undefined') {
+      if (this.geminiApiKey) {
+        localStorage.setItem('bricktalk_gemini_key', this.geminiApiKey);
+      } else {
+        localStorage.removeItem('bricktalk_gemini_key');
+      }
     }
   }
 
@@ -128,9 +130,32 @@ class BrickyDialogueEngine {
     if (!rawText) return true;
     const t = String(rawText).trim().toLowerCase();
     if (t.length === 0) return true;
-    // 의미 없는 잡음, 망설임, 짧은 감탄사, 특수문자만 있는 경우
     const hesitations = /^(uh|um|er|ah|eh|oh|어|음|그|아|\.+|ㅋ+|ㅎ+|\?+)$/i;
-     this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
+    if (hesitations.test(t)) return true;
+    if (t.replace(/[\s\.\?!~,\-_]/g, '').length < 2) return true;
+    return false;
+  }
+
+  /**
+   * 🌟 멀티턴 티키타카(Tiki-Taka) 지능형 대화 생성기
+   */
+  generateContextualResponse(rawText) {
+    const text = (rawText || '').trim().toLowerCase();
+
+    // 🌟 말을 잘 못 들었거나 단순 잡음/망설임인 경우
+    if (this.isUnclearSpeech(rawText)) {
+      return {
+        replyEn: "Sorry Siwoo, Bricky couldn't hear that clearly! Can you say it one more time? 👂",
+        replyKr: "시우야, 브릭키가 귀를 쫑긋 세웠는데 잘 못 들었어! 천천히 한 번만 다시 말해줄래? 👂",
+        suggestions: [
+          { emoji: "👂", en: "Listen to me, Bricky!", phonetic: "[리슨 투 미, 브릭키]", kr: "브릭키 잘 들어봐요!" },
+          { emoji: "🗣️", en: "Let me say it again!", phonetic: "[렛 미 세이 잇 어게인]", kr: "다시 한 번 말해볼게요!" },
+          { emoji: "✨", en: "Hello Bricky!", phonetic: "[헬로 브릭키]", kr: "안녕 브릭키야!" }
+        ]
+      };
+    }
+
+    this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
 
     // 🌟 1. 시우가 브릭키에게 질문을 던졌을 때! (역질문 및 상호 인터랙션)
     const isAskingBricky = text.includes('너는') || text.includes('브릭키는') || text.includes('how about you') || text.includes('what about you') || text.includes('who are you') || text.includes('how old') || text.includes('what do you like') || text.includes('do you like') || text.includes('좋아해?') || text.includes('몇 살');
@@ -568,7 +593,12 @@ const BRICKY_TOPICS = {
   }
 };
 
-window.BrickyDialogueEngine = BrickyDialogueEngine;
-window.BRICKY_TOPICS = BRICKY_TOPICS;
-window.TeddyDialogueEngine = BrickyDialogueEngine;
-window.TEDDY_TOPICS = BRICKY_TOPICS;
+if (typeof window !== 'undefined') {
+  window.BrickyDialogueEngine = BrickyDialogueEngine;
+  window.BRICKY_TOPICS = BRICKY_TOPICS;
+  window.TeddyDialogueEngine = BrickyDialogueEngine;
+  window.TEDDY_TOPICS = BRICKY_TOPICS;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { BrickyDialogueEngine, BRICKY_TOPICS };
+}
