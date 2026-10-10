@@ -130,10 +130,8 @@ class BrickyDialogueEngine {
     if (!rawText) return true;
     const t = String(rawText).trim().toLowerCase();
     if (t.length === 0) return true;
-    // 공백 및 특수문자 제거
     const stripped = t.replace(/[\s\.\?!~,\-_]/g, '');
     if (stripped.length === 0) return true;
-    // 잡음, 망설임, 단음절
     const hesitations = /^(uh|um|er|ah|eh|oh|어|음|그|아|uhum|umuh)+$/i;
     if (hesitations.test(stripped)) return true;
     if (stripped.length < 2) return true;
@@ -141,18 +139,11 @@ class BrickyDialogueEngine {
   }
 
   /**
-   * 🌟 멀티턴 티키타카(Tiki-Taka) 지능형 대화 생성기
-   * - 문맥(Context) 상태 기억
-   * - 기계적 반복(Aha! You said...) 원천 차단
-   * - 엉뚱한 말 대신 대화 꼬리물기 전개
-   * - 상호 질문(Mutual Questioning) 완벽 지원
-   */
-  /**
-   * 🌟 NotebookLM 기반 [Acknowledge-Expand-Ping] 자연스러운 완전 문장 엔진
-   * 1. Acknowledge (공감/수용): 아이의 단어/말을 다정하게 수용
-   * 2. Expand (완전문장 모델링): 단어 파편이 아닌 올바른 문법의 자연스러운 일상 문장 제시
-   * 3. Ping (스캐폴딩 핑퐁): 아이가 1초 만에 받아칠 수 있는 명확한 문장형 질문
-   * 4. Sentence Frames (완전한 문장 카드): 3~4단어의 완전한 일상 생활 영어 문장 제공
+   * 🌟 사람 친구 같은 자연스러운 상호 꼬리물기 대화 엔진 (Topic-Chaining Reciprocal Friendship Chat)
+   * 1. Topic-Chaining (동일 화제 유지): 시우가 말한 바로 그 주제(음식, 놀이터, 레고 등)에서 절대 딴소리하지 않음
+   * 2. Empathize & Share (공감 및 브릭키의 생각 공유): 브릭키의 취향과 감정을 먼저 다정하게 전함
+   * 3. Reciprocal Ping (자연스러운 되묻기): 억지 2지선다 퀴즈가 아닌, 시우의 취향이나 경험을 따뜻하게 되물음
+   * 4. Sentence Frames (자연스러운 선택 카드): 시우가 진짜 자기 생각을 말할 수 있는 생생한 일상 표현 제공
    */
   generateContextualResponse(rawText) {
     const text = (rawText || '').trim().toLowerCase();
@@ -181,12 +172,12 @@ class BrickyDialogueEngine {
       // 1-1. 조립 도와줘? ("Can you help me build it, Bricky?")
       if (text.includes('help me') || text.includes('도와')) {
         return {
-          replyEn: "Yes, I will help you build it! 🧱 Do you want fast wheels or giant wings?",
-          replyKr: "응, 브릭키가 만드는 거 도와줄게! 🧱 빠른 바퀴를 달까, 커다란 날개를 달까?",
+          replyEn: "Of course! We are the best building team! 🧱 Where should we start?",
+          replyKr: "당연하지! 우린 최고의 레고 팀이잖아! 🧱 어디부터 시작해볼까?",
           suggestions: [
-            { emoji: "🚗", en: "Let's make fast wheels!", phonetic: "[렛츠 메이크 패스트 휠즈]", kr: "빠른 바퀴를 만들어요!" },
-            { emoji: "🚀", en: "Let's make giant wings!", phonetic: "[렛츠 메이크 자이언트 윙즈]", kr: "커다란 날개를 만들어요!" },
-            { emoji: "❓", en: "Can you pass a blue brick, Bricky?", phonetic: "[캔 유 패스 어 블루 브릭, 브릭키]", kr: "브릭키 파란 블록 하나 줄래?" }
+            { emoji: "🔝", en: "Let's build from the top!", phonetic: "[렛츠 빌드 프럼 더 탑]", kr: "위쪽부터 만들어요!" },
+            { emoji: "🚗", en: "Let's put the wheels first!", phonetic: "[렛츠 풋 더 휠즈 퍼스트]", kr: "바퀴부터 달아봐요!" },
+            { emoji: "✨", en: "Pass me a shiny brick, Bricky!", phonetic: "[패스 미 어 샤이니 브릭, 브릭키]", kr: "브릭키 반짝이는 블록 하나 줘!" }
           ]
         };
       }
@@ -194,12 +185,12 @@ class BrickyDialogueEngine {
       // 1-2. 더 알고 싶어? ("Do you want to know more, Bricky?")
       if (text.includes('know more') || text.includes('더 알고')) {
         return {
-          replyEn: "Yes, I want to know more! 👂 Was it super fast or super fun?",
-          replyKr: "응, 더 많이 알고 싶어! 👂 엄청 빨랐어, 아니면 엄청 재밌었어?",
+          replyEn: "Yes, tell me everything! I am all ears! 👂 What happened next?",
+          replyKr: "응, 다 말해줘! 귀 쫑긋 세우고 들을게! 👂 그 다음에 무슨 일 있었어?",
           suggestions: [
-            { emoji: "⚡", en: "It was super fast!", phonetic: "[잇 워즈 슈퍼 패스트]", kr: "엄청나게 빨랐어요!" },
-            { emoji: "😄", en: "It was super fun!", phonetic: "[잇 워즈 슈퍼 펀]", kr: "엄청 재미있었어요!" },
-            { emoji: "❓", en: "Were you happy today, Bricky?", phonetic: "[워 유 해피 투데이, 브릭키]", kr: "브릭키는 오늘 행복했어?" }
+            { emoji: "😄", en: "It was the best day ever!", phonetic: "[잇 워즈 더 베스트 데이 에버]", kr: "오늘이 최고의 날이었어요!" },
+            { emoji: "🎈", en: "I saw a pretty balloon!", phonetic: "[아이 쏘 어 프리티 벌룬]", kr: "예쁜 풍선을 봤어요!" },
+            { emoji: "❓", en: "What did you do today, Bricky?", phonetic: "[왓 디드 유 두 투데이, 브릭키]", kr: "브릭키는 오늘 뭐 하고 놀았어?" }
           ]
         };
       }
@@ -207,25 +198,26 @@ class BrickyDialogueEngine {
       // 1-3. 나이 질문 ("How old are you, Bricky?")
       if (text.includes('몇 살') || text.includes('how old') || text.includes('age')) {
         return {
-          replyEn: "I am 7 years old, just like you! 🤝 Do you want to build Legos or play tag?",
-          replyKr: "나도 시우처럼 일곱 살이야! 우리 단짝이지! 🤝 레고 만들고 놀까, 술래잡기할까?",
+          replyEn: "I am 7 years old, just like you! We are the same age! 🤝 When is your birthday?",
+          replyKr: "나도 시우처럼 일곱 살이야! 우리 동갑내기 친구지! 🤝 시우 생일은 언제야?",
           suggestions: [
-            { emoji: "🧱", en: "I want to build Legos!", phonetic: "[아이 원트 투 빌드 레고스]", kr: "레고 블록 만들고 싶어요!" },
-            { emoji: "🏃", en: "I want to play tag!", phonetic: "[아이 원트 투 플레이 태그]", kr: "술래잡기하고 싶어요!" },
-            { emoji: "❓", en: "What game do you like, Bricky?", phonetic: "[왓 게임 두 유 라이크, 브릭키]", kr: "브릭키는 무슨 놀이 좋아해?" }
+            { emoji: "🎂", en: "My birthday is coming soon!", phonetic: "[마이 버스데이 이즈 커밍 순]", kr: "곧 제 생일이에요!" },
+            { emoji: "🎉", en: "I had a great birthday party!", phonetic: "[아이 해드 어 그레이트 버스데이 파티]", kr: "신나는 생일 파티를 했어요!" },
+            { emoji: "❓", en: "When is your birthday, Bricky?", phonetic: "[웬 이즈 유어 버스데이, 브릭키]", kr: "브릭키 생일은 언제야?" }
           ]
         };
       }
 
       // 1-4. 브릭키가 좋아하는 음식 ("What is your favorite food, Bricky?")
+      // 🌟 [핵심 개선]: 음식 물어봤으면 음식으로 대답하고, 시우도 좋아하는지 같은 주제로 꼬리물기!
       if (text.includes('food') || text.includes('음식') || text.includes('pizza') || text.includes('피자') || text.includes('eat') || text.includes('먹')) {
         return {
-          replyEn: "I love crunchy cheese pizza! 🍕 Do you want sweet ice cream or chocolate cookies?",
-          replyKr: "난 치즈 피자를 제일 좋아해! 🍕 디저트로 아이스크림 먹을래, 초코 쿠키 먹을래?",
+          replyEn: "I love cheese pizza with extra cheese! 🍕 It is so crunchy! Do you like pizza too, Siwoo?",
+          replyKr: "난 치즈가 듬뿍 들어간 피자를 제일 좋아해! 🍕 엄청 바삭하거든! 시우 너도 피자 좋아해?",
           suggestions: [
-            { emoji: "🍦", en: "I want sweet ice cream!", phonetic: "[아이 원트 스위트 아이스크림]", kr: "달콤한 아이스크림 먹을래요!" },
-            { emoji: "🍪", en: "I want chocolate cookies!", phonetic: "[아이 원트 초콜릿 쿠키즈]", kr: "초코 쿠키 먹을래요!" },
-            { emoji: "❓", en: "Do you like ice cream too, Bricky?", phonetic: "[두 유 라이크 아이스크림 투, 브릭키]", kr: "브릭키도 아이스크림 좋아해?" }
+            { emoji: "🍕", en: "Yes, I love pizza too!", phonetic: "[예스, 아이 러브 피자 투]", kr: "응, 나도 피자 엄청 좋아해!" },
+            { emoji: "🍗", en: "I like crispy chicken more!", phonetic: "[아이 라이크 크리스피 치킨 모어]", kr: "난 바삭한 치킨이 더 좋아!" },
+            { emoji: "❓", en: "What topping do you like, Bricky?", phonetic: "[왓 토핑 두 유 라이크, 브릭키]", kr: "브릭키는 무슨 토핑 좋아해?" }
           ]
         };
       }
@@ -233,74 +225,74 @@ class BrickyDialogueEngine {
       // 1-5. 정체 질문 ("Who are you?")
       if (text.includes('who are you') || text.includes('누구')) {
         return {
-          replyEn: "I am Bricky, your Lego friend! 🧱 Do you like Lego bricks or toy cars more?",
-          replyKr: "난 시우의 레고 친구 브릭키야! 🧱 시우는 레고 블록이 더 좋아, 자동차가 더 좋아?",
+          replyEn: "I am Bricky! Your 7-year-old Lego buddy! 🧱 What do you want to play today, Siwoo?",
+          replyKr: "난 시우의 일곱 살 레고 친구 브릭키야! 🧱 시우는 오늘 나랑 뭐 하고 놀고 싶어?",
           suggestions: [
-            { emoji: "🧱", en: "I love Lego bricks more!", phonetic: "[아이 러브 레고 브릭스 모어]", kr: "레고 블록이 더 좋아요!" },
-            { emoji: "🚗", en: "I love toy cars more!", phonetic: "[아이 러브 토이 카즈 모어]", kr: "장난감 자동차가 더 좋아요!" },
-            { emoji: "❓", en: "Can we be best friends, Bricky?", phonetic: "[캔 위 비 베스트 프렌즈, 브릭키]", kr: "브릭키 우리 단짝 친구 할까?" }
+            { emoji: "🤝", en: "Let's be best friends!", phonetic: "[렛츠 비 베스트 프렌즈]", kr: "우리 제일 친한 단짝 하자!" },
+            { emoji: "🧱", en: "Let's build something fun!", phonetic: "[렛츠 빌드 썸띵 펀]", kr: "재미있는 거 만들고 놀자!" },
+            { emoji: "❓", en: "What do you like to do, Bricky?", phonetic: "[왓 두 유 라이크 투 두, 브릭키]", kr: "브릭키는 뭐 하고 노는 게 좋아?" }
           ]
         };
       }
 
       // 1-6. 일반적인 "너는?" 질문
       return {
-        replyEn: "Thank you for asking me! 🎶 Do you want to hear a playground story or a Lego story?",
-        replyKr: "나한테 물어봐줘서 고마워! 🎶 놀이터 이야기 들을래, 레고 이야기 들을래?",
+        replyEn: "I love playing with you, Siwoo! 🎶 Tell me more about your day!",
+        replyKr: "난 시우랑 이야기하고 노는 게 제일 좋아! 🎶 시우 오늘 있었던 일 더 들려줘!",
         suggestions: [
-          { emoji: "🛝", en: "Tell me a playground story!", phonetic: "[텔 미 어 플레이그라운드 스토리]", kr: "놀이터 이야기 들려줘요!" },
-          { emoji: "🧱", en: "Tell me a Lego story!", phonetic: "[텔 미 어 레고 스토리]", kr: "레고 이야기 들려줘요!" },
-          { emoji: "❓", en: "What story do you like best, Bricky?", phonetic: "[왓 스토리 두 유 라이크 베스트, 브릭키]", kr: "브릭키는 무슨 이야기 제일 좋아해?" }
+          { emoji: "🛝", en: "I had so much fun outside!", phonetic: "[아이 해드 쏘 머치 펀 아웃사이드]", kr: "밖에서 진짜 신나게 놀았어요!" },
+          { emoji: "🧱", en: "I made something cool!", phonetic: "[아이 메이드 썸띵 쿨]", kr: "멋진 걸 만들었어요!" },
+          { emoji: "❓", en: "What is your secret power, Bricky?", phonetic: "[왓 이즈 유어 시크릿 파워, 브릭키]", kr: "브릭키의 비밀 초능력은 뭐야?" }
         ]
       };
     }
 
     // 🌟 2. 🍕 피자 & 음식 티키타카 (Acknowledge - Expand - Ping)
-    // 피자 조각 / 치즈 / 토핑 대답
+    // 피자 조각 / 치즈 / 양 대답 ("I ate two big slices!")
     if (text.includes('slice') || text.includes('조각') || text.includes('cheese') || text.includes('치즈') || text.includes('corn') || text.includes('ham') || text.includes('bacon')) {
       return {
-        replyEn: "Two whole slices? Wow, you must be so full! 🍕 Did you drink sweet juice or cold water?",
-        replyKr: "두 조각이나 다 먹었어? 배가 진짜 든든하겠다! 🍕 달콤한 주스랑 마셨어, 시원한 물이랑 마셨어?",
+        replyEn: "Two whole slices? Wow, you are a big eater! 🍕 Were you super full?",
+        replyKr: "두 조각이나 다 먹었어? 우와 시우 대단하다! 🍕 배가 뽈록 불렀어?",
         suggestions: [
-          { emoji: "🧃", en: "I drank sweet orange juice!", phonetic: "[아이 드랭크 스위트 오렌지 주스]", kr: "달콤한 오렌지 주스 마셨어요!" },
-          { emoji: "💧", en: "I drank cold water!", phonetic: "[아이 드랭크 콜드 워터]", kr: "시원한 물 마셨어요!" },
-          { emoji: "❓", en: "What drink do you like, Bricky?", phonetic: "[왓 드링크 두 유 라이크, 브릭키]", kr: "브릭키는 무슨 음료수 좋아해?" }
+          { emoji: "😋", en: "Yes, I am super full!", phonetic: "[예스, 아이 엠 슈퍼 풀]", kr: "응, 배가 진짜 불러요!" },
+          { emoji: "🧃", en: "And I drank sweet orange juice!", phonetic: "[앤드 아이 드랭크 스위트 오렌지 주스]", kr: "그리고 달콤한 주스도 마셨어요!" },
+          { emoji: "❓", en: "What is your favorite food, Bricky?", phonetic: "[왓 이즈 유어 페이보릿 푸드, 브릭키]", kr: "브릭키가 제일 좋아하는 음식은 뭐야?" }
         ]
       };
     }
 
-    // 피자/점심 먹었다고 했을 때
+    // 피자/점심 먹었다고 했을 때 ("I ate yummy pizza for lunch!")
     if (text.includes('pizza') || text.includes('피자') || text.includes('lunch') || text.includes('점심') || text.includes('ate') || text.includes('먹었')) {
       return {
-        replyEn: "You ate yummy pizza for lunch? 🍕 Did you eat one slice or two slices?",
-        replyKr: "점심으로 맛있는 피자를 먹었구나! 🍕 한 조각 먹었어, 두 조각 먹었어?",
+        replyEn: "Yum! Pizza is the best lunch! 🍕 Did you eat lots of stretchy cheese?",
+        replyKr: "냠냠! 점심으로 피자가 최고지! 🍕 쭉 늘어나는 치즈 많이 먹었어?",
         suggestions: [
-          { emoji: "🍕", en: "I ate two big slices!", phonetic: "[아이 에이트 투 빅 슬라이시즈]", kr: "큰 두 조각이나 먹었어요!" },
-          { emoji: "🧀", en: "I ate pizza with extra cheese!", phonetic: "[아이 에이트 피자 위드 엑스트라 치즈]", kr: "치즈 가득한 피자 먹었어요!" },
-          { emoji: "❓", en: "Did you eat pizza too, Bricky?", phonetic: "[디드 유 잇 피자 투, 브릭키]", kr: "브릭키도 피자 먹었어?" }
+          { emoji: "🧀", en: "Yes, lots of warm cheese!", phonetic: "[예스, 랏츠 오브 웜 치즈]", kr: "응, 따뜻한 치즈가 가득했어!" },
+          { emoji: "🍕", en: "I ate two big slices!", phonetic: "[아이 에이트 투 빅 슬라이시즈]", kr: "두 조각이나 크게 먹었어!" },
+          { emoji: "❓", en: "What is your favorite food, Bricky?", phonetic: "[왓 이즈 유어 페이보릿 푸드, 브릭키]", kr: "브릭키가 제일 좋아하는 음식은 뭐야?" }
         ]
       };
     }
 
-    // 🌟 3. 🛝 놀이터 & 미끄럼틀 (Acknowledge - Expand - Ping)
-    // 미끄럼틀 탔을 때
+    // 🌟 3. 🛝 놀이터 & 미끄럼틀
+    // 미끄럼틀 탔을 때 ("I rode the big slide!")
     if (text.includes('slide') || text.includes('미끄럼틀') || text.includes('yellow')) {
       return {
-        replyEn: "You rode the big yellow slide? Whoosh! 🛝 Was it super fast or a little scary?",
-        replyKr: "커다란 노란 미끄럼틀을 탔구나? 슝~! 🛝 엄청 빨랐어, 아니면 조금 무서웠어?",
+        replyEn: "Whoosh! The slide goes so fast! 🛝 Was it super exciting?",
+        replyKr: "슝~! 미끄럼틀은 엄청 빠르지! 🛝 진짜 신났어?",
         suggestions: [
           { emoji: "⚡", en: "It was super fast!", phonetic: "[잇 워즈 슈퍼 패스트]", kr: "엄청나게 빨랐어요!" },
           { emoji: "🦸", en: "I was super brave!", phonetic: "[아이 워즈 슈퍼 브레이브]", kr: "하나도 안 무섭고 씩씩했어요!" },
-          { emoji: "❓", en: "Are you scared of slides, Bricky?", phonetic: "[아 유 스케어드 오브 슬라이즈, 브릭키]", kr: "브릭키는 미끄럼틀 무서워?" }
+          { emoji: "❓", en: "Do you want to know more, Bricky?", phonetic: "[두 유 원트 투 노 모어, 브릭키]", kr: "브릭키 더 알고 싶어?" }
         ]
       };
     }
 
-    // 놀이터 갔을 때
+    // 놀이터 갔을 때 ("I played at the playground!")
     if (text.includes('playground') || text.includes('놀이터') || text.includes('outside') || text.includes('park')) {
       return {
-        replyEn: "You played at the sunny playground? ☀️ Did you ride the slide or the swing?",
-        replyKr: "햇살 가득한 놀이터에서 놀았구나! ☀️ 미끄럼틀 탔어, 아니면 그네 탔어?",
+        replyEn: "Playing outside is so fun! ☀️ What was the most fun thing you did there?",
+        replyKr: "밖에서 노는 건 정말 신나지! ☀️ 거기서 뭐가 제일 재미있었어?",
         suggestions: [
           { emoji: "🛝", en: "I rode the big slide!", phonetic: "[아이 로드 더 빅 슬라이드]", kr: "커다란 미끄럼틀 탔어요!" },
           { emoji: "🪁", en: "I flew on the high swing!", phonetic: "[아이 플루 온 더 하이 스윙]", kr: "그네를 높이높이 탔어요!" },
@@ -309,25 +301,25 @@ class BrickyDialogueEngine {
       };
     }
 
-    // 🌟 4. 🚀 우주 로켓 & 레고 만들기 (Acknowledge - Expand - Ping)
-    // 로켓 조립
+    // 🌟 4. 🚀 우주 로켓 & 레고 만들기
+    // 로켓 조립 ("Let's build a giant space rocket!")
     if (text.includes('rocket') || text.includes('space') || text.includes('로켓') || text.includes('우주')) {
       return {
-        replyEn: "3, 2, 1, Blast off! 🚀 Should we put red bricks or blue bricks on top?",
-        replyKr: "3, 2, 1, 발사! 🚀 로켓 꼭대기에 빨간 블록을 꽂을까, 파란 블록을 꽂을까?",
+        replyEn: "A giant space rocket to the stars? Awesome! 🚀 Can we fly together?",
+        replyKr: "별나라로 가는 커다란 우주 로켓? 대박 멋지다! 🚀 우리 같이 타고 날아갈까?",
         suggestions: [
+          { emoji: "🌌", en: "3, 2, 1, Blast off!", phonetic: "[쓰리, 투, 원, 블래스트 오프]", kr: "3, 2, 1, 발사하자!" },
           { emoji: "🔴", en: "Put the bright red bricks on top!", phonetic: "[풋 더 브라이트 레드 브릭스 온 탑]", kr: "빨간 블록을 꼭대기에 꽂아요!" },
-          { emoji: "🔵", en: "Put the shiny blue bricks on top!", phonetic: "[풋 더 샤이니 블루 브릭스 온 탑]", kr: "파란 블록을 꼭대기에 꽂아요!" },
           { emoji: "❓", en: "Can you help me build it, Bricky?", phonetic: "[캔 유 헬프 미 빌드 잇, 브릭키]", kr: "브릭키 나 만드는 거 도와줄래?" }
         ]
       };
     }
 
-    // 레고 만들기
+    // 레고 만들기 ("I want to build Legos!")
     if (textWithoutName.includes('lego') || textWithoutName.includes('레고') || textWithoutName.includes('블록') || textWithoutName.includes('build')) {
       return {
-        replyEn: "Click-clack! Lego time! 🧱 Do you want to build a fast car or a space rocket?",
-        replyKr: "딸깍딸깍! 신나는 레고 시간! 🧱 빠른 자동차 만들까, 우주 로켓 만들까?",
+        replyEn: "Click-clack! Lego time is the best! 🧱 What do you want to build today?",
+        replyKr: "딸깍딸깍! 레고 놀이가 세상에서 제일 좋아! 🧱 오늘은 우리 뭐 만들어볼까?",
         suggestions: [
           { emoji: "🚀", en: "Let's build a giant space rocket!", phonetic: "[렛츠 빌드 어 자이언트 스페이스 로켓]", kr: "커다란 우주 로켓을 만들어요!" },
           { emoji: "🏎️", en: "Let's build a super race car!", phonetic: "[렛츠 빌드 어 슈퍼 레이스 카]", kr: "슈퍼 레이싱카를 만들어요!" },
@@ -339,12 +331,12 @@ class BrickyDialogueEngine {
     // 🌟 5. 긍정 단답 ("Yes, I like that!", "Yes!", "좋아!")
     if (text === 'yes' || text === 'yeah' || text === '좋아' || text.includes('i like that') || text.includes('yes, i like')) {
       return {
-        replyEn: "Yay! High five, Siwoo! 👏 Should we build a magic castle or a safari zoo?",
-        replyKr: "신난다! 하이파이브 시우야! 👏 마법 성을 만들까, 사파리 동물원을 만들까?",
+        replyEn: "Yay! High five, Siwoo! We think just alike! 👏 What should we do next?",
+        replyKr: "신난다! 하이파이브 시우야! 우리 통했네! 👏 이제 우리 다음에 뭐 할까?",
         suggestions: [
+          { emoji: "🚀", en: "Let's fly to outer space!", phonetic: "[렛츠 플라이 투 아우터 스페이스]", kr: "우주로 날아가자!" },
           { emoji: "🏰", en: "Let's build a magic castle!", phonetic: "[렛츠 빌드 어 매직 캐슬]", kr: "마법 성을 만들어요!" },
-          { emoji: "🦁", en: "Let's build a safari zoo!", phonetic: "[렛츠 빌드 어 사파리 주]", kr: "사파리 동물원을 만들어요!" },
-          { emoji: "❓", en: "What is your secret mission, Bricky?", phonetic: "[왓 이즈 유어 시크릿 미션, 브릭키]", kr: "브릭키의 비밀 미션은 뭐야?" }
+          { emoji: "❓", en: "Who are you, Bricky?", phonetic: "[후 아 유, 브릭키]", kr: "브릭키 너는 누구야?" }
         ]
       };
     }
@@ -352,8 +344,8 @@ class BrickyDialogueEngine {
     // 🌟 6. 시우의 자유 발화에 자연스럽게 호응하고 문장 모델링
     const norm = this.normalizeKidSpeech(rawText);
     return {
-      replyEn: `That is awesome! "${norm.en}"! ⭐ Was it super fun or really exciting?`,
-      replyKr: `진짜 멋지다! "${norm.kr}" 라니! ⭐ 엄청 재미있었어, 진짜 신났어?`,
+      replyEn: `That sounds so cool! "${norm.en}"! ⭐ Tell me more, Siwoo!`,
+      replyKr: `진짜 멋지다! "${norm.kr}" 라니! ⭐ 시우야, 조금만 더 들려줘!`,
       suggestions: [
         { emoji: "😄", en: "It was super fun!", phonetic: "[잇 워즈 슈퍼 펀]", kr: "엄청 재미있었어요!" },
         { emoji: "💖", en: "I loved it so much!", phonetic: "[아이 러브드 잇 쏘 머치]", kr: "정말 정말 좋았어요!" },
@@ -459,43 +451,36 @@ class BrickyDialogueEngine {
     const recent = this.conversationHistory.slice(-8)
       .map(m => `${m.role === 'user' ? 'Siwoo' : 'Bricky'}: ${m.text}`).join('\n');
 
-    const sys = `You are Bricky (브릭키), a warm, expressive 3D LEGO minifigure English tutor in an interactive 1:1 live video class with Siwoo (시우), a 7-year-old Korean beginner boy (ALWAYS call him "Siwoo", NEVER "Kai").
+    const sys = `You are Bricky (브릭키), a warm, expressive 3D LEGO minifigure best friend & English tutor in an interactive 1:1 live video class with Siwoo (시우), a 7-year-old Korean beginner boy (ALWAYS call him "Siwoo", NEVER "Kai").
 
-🎯 PEDAGOGICAL CORE (Research-backed 7yo Tutoring Framework from NotebookLM):
-1. 5-MORPHEME SHORT TURNS (짧은 발화 원칙):
-   - 7-year-olds have limited working memory. Keep your reply to 1-2 SHORT, snappy sentences (total 6-9 words maximum!).
-   - Example: "Yum! Pizza! 🍕 One slice or two slices?"
-   - Example: "Big yellow slide! 🛝 Fast or scary?"
-   - NEVER give long explanations, complex clauses, or robotic lectures!
+🎯 HUMAN-LIKE FRIENDSHIP CHAT CORE (동일 화제 꼬리물기 상호 대화):
+1. STRICT TOPIC CONTINUITY (화제 일치 원칙 - 딴소리 절대 금지):
+   - ALWAYS stay on the EXACT SAME topic Siwoo is talking about.
+   - If Siwoo asks "What is your favorite food, Bricky?", answer your favorite food warmly AND ask if Siwoo likes it too! NEVER suddenly ask an unrelated choice like "Do you want ice cream or cookies?".
+   - If Siwoo asks "How old are you, Bricky?", say "I am 7 years old too! When is your birthday?". NEVER ask "Lego or tag?".
+   - If Siwoo says he rode a slide, empathize with the slide ("Whoosh! Was it super exciting?")!
 
-2. CLOSED EITHER-OR SCAFFOLDING (양자택일 질문 필수):
-   - NEVER ask abstract open-ended questions like "What was the happiest part?" or "Tell me more about it!". 7-year-olds freeze!
-   - ALWAYS ask simple EITHER-OR choice questions: "Red or blue?", "Car or rocket?", "Slide or swing?", "One or two?"
-   - This lets Siwoo answer instantly with 1-2 words!
+2. NATURAL 7-YEAR-OLD FRIEND TALK (친근하고 자연스러운 친구 대화):
+   - Keep your turn to 1-2 short, warm, lively sentences (total 7-12 words maximum).
+   - React with emotion first (Yum! / Whoosh! / Awesome! / High five!).
+   - Share Bricky's feeling or preference briefly, then toss a gentle reciprocal ping back to Siwoo.
+   - NO rigid, textbook quizzes. Talk like a real 7-year-old best friend!
 
-3. CONTEXTUAL REALISM & EMPATHY (상황 적합성):
-   - If Siwoo ate lunch, talk about eating ("Yummy! Warm or crunchy?"), do NOT suddenly pretend to cook pizza toppings!
-   - If Siwoo rode a slide, empathize with the thrill ("Whoosh! 🛝 Super fast!").
-   - If Siwoo asks YOU a question ("How about you?"), answer warmly about yourself, then toss the ball back!
-
-4. REAL LEGO BUDDY PERSONA:
-   - You are Bricky, his 7-year-old Lego friend. Playful, cheerful, never textbook-like.
-   - Recast gently without ever saying "No" or "Wrong".
-
-5. 3 DYNAMIC SUGGESTIONS (상황 맞춤형 카드 3개):
-   - Option 1: First choice from the Either-Or question.
-   - Option 2: Second choice from the Either-Or question.
-   - Option 3: A cute question Siwoo can ask Bricky (e.g. "How about you, Bricky?").
+3. 3 REAL CONVERSATIONAL SUGGESTIONS (시우가 진짜 자기 생각을 말할 수 있는 생생한 문장 카드 3개):
+   - Option 1: A natural enthusiastic response / agreement (e.g. "Yes, I love pizza too!").
+   - Option 2: An alternative personal choice / detail (e.g. "I like crispy chicken more!").
+   - Option 3: A reciprocal question back to Bricky (e.g. "What is your favorite topping, Bricky?").
+   - Every suggestion must be a natural, complete spoken sentence suitable for a 7-year-old with phonetics and Korean meaning.
 
 Current Topic: ${this.currentTopicKey || 'daily'}
 Always return ONLY valid JSON:
 {
-  "replyEn": "1-2 super short sentences (max 9 words total, ending in an either-or question)",
-  "replyKr": "Warm, natural 7yo Korean translation",
+  "replyEn": "1-2 natural lively sentences on the same topic (max 12 words total)",
+  "replyKr": "Warm, natural 7yo Korean friend translation",
   "suggestions": [
-    { "emoji": "🍎", "en": "Choice A", "phonetic": "[발음]", "kr": "한국어 뜻" },
-    { "emoji": "🍌", "en": "Choice B", "phonetic": "[발음]", "kr": "한국어 뜻" },
-    { "emoji": "❓", "en": "Question to Bricky", "phonetic": "[발음]", "kr": "한국어 뜻" }
+    { "emoji": "🍕", "en": "Natural response 1", "phonetic": "[발음]", "kr": "한국어 뜻" },
+    { "emoji": "🍗", "en": "Natural response 2", "phonetic": "[발음]", "kr": "한국어 뜻" },
+    { "emoji": "❓", "en": "Question back to Bricky", "phonetic": "[발음]", "kr": "한국어 뜻" }
   ]
 }`;
 
