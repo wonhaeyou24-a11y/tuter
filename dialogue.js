@@ -130,226 +130,130 @@ class BrickyDialogueEngine {
     if (t.length === 0) return true;
     // 의미 없는 잡음, 망설임, 짧은 감탄사, 특수문자만 있는 경우
     const hesitations = /^(uh|um|er|ah|eh|oh|어|음|그|아|\.+|ㅋ+|ㅎ+|\?+)$/i;
-    if (hesitations.test(t)) return true;
-    if (t.replace(/[\s\.\?!~,\-_]/g, '').length < 2) return true;
-    return false;
-  }
+     this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
 
-  /**
-   * 🌟 멀티턴 티키타카(Tiki-Taka) 지능형 대화 생성기
-   * - 문맥을 기억하여 이전 질문의 답변에 정확하게 꼬리를 물고 다음 질문을 이어감
-   * - 발화가 불명확하거나 못 알아들었을 때는 엉뚱한 진도로 절대 점프하지 않고 다정하게 재요청
-   */
-  generateContextualResponse(rawText) {
-    const text = (rawText || '').trim().toLowerCase();
-
-    // 🌟 [핵심] 말을 잘 못 들었거나 단순 잡음/망설임인 경우: 진도 점프 금지, 제자리에서 다정하게 다시 요청!
-    if (this.isUnclearSpeech(rawText)) {
+    // 🌟 1. 시우가 브릭키에게 질문을 던졌을 때! (역질문 및 상호 인터랙션)
+    const isAskingBricky = text.includes('너는') || text.includes('브릭키는') || text.includes('how about you') || text.includes('what about you') || text.includes('who are you') || text.includes('how old') || text.includes('what do you like') || text.includes('do you like') || text.includes('좋아해?') || text.includes('몇 살');
+    
+    if (isAskingBricky) {
+      if (text.includes('몇 살') || text.includes('how old') || text.includes('age')) {
+        return {
+          replyEn: "I am 7 years old, just like you, Siwoo! We are the best Lego friends! ⭐ What is your favorite game?",
+          replyKr: "나도 시우처럼 일곱 살이야! 우리 동갑내기 최고의 레고 친구네! ⭐ 시우는 요즘 무슨 놀이가 제일 재밌어?",
+          suggestions: [
+            { emoji: "🧱", en: "I love building Legos!", phonetic: "[아이 러브 빌딩 레고스]", kr: "레고 만드는 게 제일 좋아요!" },
+            { emoji: "🎮", en: "I love playing video games!", phonetic: "[아이 러브 플레잉 비디오 게임즈]", kr: "게임하는 게 제일 재밌어요!" },
+            { emoji: "❓", en: "What game do you play, Bricky?", phonetic: "[왓 게임 두 유 플레이, 브릭키]", kr: "브릭키는 무슨 놀이 해?" }
+          ]
+        };
+      }
+      if (text.includes('음식') || text.includes('먹') || text.includes('food') || text.includes('pizza') || text.includes('eat')) {
+        return {
+          replyEn: "Bricky loves crunchy cheese pizza and sweet strawberries! 🍕🍓 What is your absolute favorite food, Siwoo?",
+          replyKr: "브릭키는 치즈 듬뿍 피자랑 달콤한 딸기를 제일 좋아해! 🍕🍓 시우가 세상에서 제일 좋아하는 음식은 뭐야?",
+          suggestions: [
+            { emoji: "🍕", en: "I love pizza too!", phonetic: "[아이 러브 피자 투]", kr: "나도 피자 정말 좋아해!" },
+            { emoji: "🍗", en: "I love crispy chicken!", phonetic: "[아이 러브 크리스피 치킨]", kr: "바삭한 치킨이 제일 좋아요!" },
+            { emoji: "❓", en: "Can we eat pizza together, Bricky?", phonetic: "[캔 위 잇 피자 투게더, 브릭키]", kr: "브릭키 나랑 피자 같이 먹을까?" }
+          ]
+        };
+      }
+      if (text.includes('레고') || text.includes('lego') || text.includes('brick') || text.includes('장난감')) {
+        return {
+          replyEn: "I love building giant yellow rockets with shiny wings! 🚀 What do you want to build with me, Siwoo?",
+          replyKr: "난 날개 달린 커다란 노란 우주선 만드는 걸 제일 좋아해! 🚀 시우는 브릭키랑 같이 뭘 조립하고 싶어?",
+          suggestions: [
+            { emoji: "🏎️", en: "Let's build a race car!", phonetic: "[렛츠 빌드 어 레이스 카]", kr: "멋진 레이싱카 만들어요!" },
+            { emoji: "🏰", en: "Let's build a giant castle!", phonetic: "[렛츠 빌드 어 자이언트 캐슬]", kr: "커다란 성을 만들어요!" },
+            { emoji: "❓", en: "How fast can your rocket fly?", phonetic: "[하우 패스트 캔 유어 로켓 플라이]", kr: "브릭키 우주선은 얼마나 빨라?" }
+          ]
+        };
+      }
+      // 일반적인 "너는?" 질문
       return {
-        replyEn: "Sorry Siwoo, Bricky couldn't hear that clearly! Can you say it one more time? 👂",
-        replyKr: "시우야, 브릭키가 귀를 쫑긋 세웠는데 잘 못 들었어! 천천히 한 번만 다시 말해줄래? 👂",
-        isClarification: true,
-        suggestions: this.lastGoodSuggestions || [
-          { emoji: "👂", en: "Listen to me, Bricky!", phonetic: "[리슨 투 미, 브릭키]", kr: "브릭키 잘 들어봐요!" },
-          { emoji: "🗣️", en: "Let me say it again!", phonetic: "[렛 미 세이 잇 어게인]", kr: "다시 한 번 말해볼게요!" },
-          { emoji: "✨", en: "I want to talk more!", phonetic: "[아이 원트 투 톡 모어]", kr: "이야기 더 할래요!" }
+        replyEn: "Thank you for asking me, Siwoo! I love singing and chatting with you! 🎶 What fun thing should we talk about next?",
+        replyKr: "나한테도 물어봐줘서 정말 고마워 시우야! 난 시우랑 노래하고 이야기하는 게 제일 좋아! 🎶 다음엔 무슨 신나는 얘기 할까?",
+        suggestions: [
+          { emoji: "🧱", en: "Let's talk about Legos!", phonetic: "[렛츠 톡 어바웃 레고스]", kr: "레고 이야기 더 해요!" },
+          { emoji: "🦖", en: "Let's talk about dinosaurs!", phonetic: "[렛츠 톡 어바웃 다이노소어스]", kr: "공룡 이야기 해요!" },
+          { emoji: "❓", en: "What is your favorite color, Bricky?", phonetic: "[왓 이즈 유어 페이보릿 컬러, 브릭키]", kr: "브릭키는 무슨 색 좋아해?" }
         ]
       };
     }
 
-    this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
-
-    // 1. 🍕 음식 & 식사 티키타카 체인
-    if (text.includes('밥') || text.includes('먹') || text.includes('피자') || text.includes('pizza') || text.includes('사과') || text.includes('apple') || text.includes('breakfast') || text.includes('lunch') || text.includes('dinner') || text.includes('hungry') || this.currentContextTopic === 'food') {
-      this.currentContextTopic = 'food';
-      this.currentContextStep++;
-
-      if (this.currentContextStep === 1) {
+    // 🌟 2. 🍕 음식 & 식사 티키타카 (살아있는 꼬리물기 대화)
+    if (text.includes('밥') || text.includes('먹') || text.includes('피자') || text.includes('pizza') || text.includes('사과') || text.includes('apple') || text.includes('chicken') || text.includes('치킨') || text.includes('hungry')) {
+      const isPizza = text.includes('피자') || text.includes('pizza');
+      if (isPizza) {
         return {
-          replyEn: "Yummy! Eating delicious food gives you super power, Siwoo! What food did you enjoy the most?",
-          replyKr: "맛있었겠다! 맛있는 음식을 먹으면 슈퍼 히어로 힘이 솟지, 시우야! 어떤 음식이 제일 꿀맛이었어?",
+          replyEn: "Mmm, pizza is so yummy! Bricky loves stretchy mozzarella cheese! 🧀 What toppings do you like on your pizza?",
+          replyKr: "음~ 피자는 진짜 꿀맛이지! 브릭키는 쭉 늘어나는 치즈를 제일 좋아해! 🧀 시우는 피자에 어떤 토핑이 올라간 게 좋아?",
           suggestions: [
-            { emoji: "🍕", en: "I ate delicious pizza!", phonetic: "[아이 에이트 딜리셔스 피자]", kr: "맛있는 피자를 먹었어요!" },
-            { emoji: "🍚", en: "I ate warm rice and soup!", phonetic: "[아이 에이트 웜 라이스 앤 수프]", kr: "따뜻한 밥이랑 국을 먹었어요!" },
-            { emoji: "🍎", en: "I ate sweet fresh fruit!", phonetic: "[아이 에이트 스위트 프레시 프루트]", kr: "달콤한 과일을 먹었어요!" }
-          ]
-        };
-      } else if (this.currentContextStep === 2) {
-        return {
-          replyEn: "Wow, that sounds so tasty! Who did you eat with, Siwoo? With mom or dad?",
-          replyKr: "와, 듣기만 해도 군침이 돈다! 누구랑 같이 오순도순 먹었어 시우야? 엄마랑? 아빠랑?",
-          suggestions: [
-            { emoji: "👩‍👦", en: "I ate with my mom!", phonetic: "[아이 에이트 위드 마이 맘]", kr: "엄마랑 같이 먹었어요!" },
-            { emoji: "👨‍👦", en: "I ate with my dad!", phonetic: "[아이 에이트 위드 마이 대드]", kr: "아빠랑 같이 먹었어요!" },
-            { emoji: "👨‍👩‍👦", en: "With my whole family!", phonetic: "[위드 마이 홀 패밀리]", kr: "온 가족이랑 다 함께요!" }
-          ]
-        };
-      } else if (this.currentContextStep === 3) {
-        return {
-          replyEn: "Family meal times are the happiest! What fun thing did you do after eating?",
-          replyKr: "가족들과 함께 먹어서 백 배는 더 맛있었겠다! 밥 든든하게 다 먹고는 뭐 하고 놀았어?",
-          suggestions: [
-            { emoji: "🧱", en: "I played with Lego bricks!", phonetic: "[아이 플레이드 위드 레고 브릭스]", kr: "레고 블록 놀이했어요!" },
-            { emoji: "🛝", en: "I went to the playground!", phonetic: "[아이 웬트 투 더 플레이그라운드]", kr: "놀이터에 나갔어요!" },
-            { emoji: "🎨", en: "I drew colorful pictures!", phonetic: "[아이 드루 컬러풀 픽쳐스]", kr: "그림 그리고 놀았어요!" }
-          ]
-        };
-      } else {
-        this.currentContextStep = 0;
-        return {
-          replyEn: "You are having such a wonderful day! Let's high five, Captain Siwoo!",
-          replyKr: "오늘 하루를 정말 알차고 신나게 보냈구나! 시우 캡틴, 브릭키랑 짝! 하이파이브 하자!",
-          suggestions: [
-            { emoji: "👏", en: "High five, Bricky!", phonetic: "[하이 파이브, 브릭키]", kr: "브릭키 하이파이브!" },
-            { emoji: "⭐", en: "You are my best friend!", phonetic: "[유 아 마이 베스트 프렌드]", kr: "브릭키는 내 최고 친구야!" },
-            { emoji: "🚀", en: "Let's build more Legos!", phonetic: "[렛츠 빌드 모어 레고스]", kr: "레고 더 만들어요!" }
+            { emoji: "🧀", en: "Lots of extra cheese!", phonetic: "[랏츠 오브 엑스트라 치즈]", kr: "치즈 많이 들어간 거요!" },
+            { emoji: "🍄", en: "I like sweet corn and ham!", phonetic: "[아이 라이크 스위트 콘 앤 햄]", kr: "옥수수랑 햄이 좋아요!" },
+            { emoji: "❓", en: "What topping do you like, Bricky?", phonetic: "[왓 토핑 두 유 라이크, 브릭키]", kr: "브릭키는 무슨 토핑 좋아해?" }
           ]
         };
       }
+      return {
+        replyEn: "Yummy food gives you super hero strength, Siwoo! 💪 Did you eat until your tummy was full and happy?",
+        replyKr: "맛있는 음식을 먹으면 슈퍼 히어로 힘이 불끈 솟지, 시우야! 💪 배가 뽈록해질 때까지 든든하게 맛있게 먹었어?",
+        suggestions: [
+          { emoji: "😋", en: "Yes, my tummy is full!", phonetic: "[예스, 마이 터미 이즈 풀]", kr: "네, 배가 아주 든든해요!" },
+          { emoji: "🍎", en: "I ate sweet fresh fruit!", phonetic: "[아이 에이트 스위트 프레시 프루트]", kr: "달콤한 과일도 먹었어요!" },
+          { emoji: "❓", en: "Are you hungry now, Bricky?", phonetic: "[아 유 헝그리 나우, 브릭키]", kr: "브릭키는 지금 배고파요?" }
+        ]
+      };
     }
 
-    // 2. 🛝 놀이터 & 뜀박질 티키타카 체인
-    if (text.includes('놀이터') || text.includes('밖') || text.includes('그네') || text.includes('미끄럼') || text.includes('playground') || text.includes('slide') || text.includes('swing') || this.currentContextTopic === 'playground') {
-      this.currentContextTopic = 'playground';
-      this.currentContextStep++;
-
-      if (this.currentContextStep === 1) {
-        return {
-          replyEn: "Playgrounds are the best! Do you like the fast slide or the high swing more, Siwoo?",
-          replyKr: "놀이터는 진짜 신나지! 시우는 슝 내려오는 미끄럼틀이 좋아, 높이 날아가는 그네가 좋아?",
-          suggestions: [
-            { emoji: "🛝", en: "I love the fast slide!", phonetic: "[아이 러브 더 패스트 슬라이드]", kr: "빠른 미끄럼틀이 좋아요!" },
-            { emoji: "🎪", en: "I love the high swing!", phonetic: "[아이 러브 더 하이 스윙]", kr: "높이 올라가는 그네가 좋아요!" },
-            { emoji: "🏃", en: "I love running around!", phonetic: "[아이 러브 러닝 어라운드]", kr: "막 뛰어다니는 게 좋아요!" }
-          ]
-        };
-      } else if (this.currentContextStep === 2) {
-        return {
-          replyEn: "Whoosh! That makes you feel like flying! Did you run and play with your friends there?",
-          replyKr: "슝~ 하늘을 나는 기분이었겠다! 놀이터에서 친구들이랑 신나게 달리기 시합도 했어?",
-          suggestions: [
-            { emoji: "🏃", en: "Yes, we ran super fast!", phonetic: "[예스, 위 란 슈퍼 패스트]", kr: "네, 엄청 빨리 달렸어요!" },
-            { emoji: "🙈", en: "We played hide and seek!", phonetic: "[위 플레이드 하이드 앤 식]", kr: "숨바꼭질도 했어요!" },
-            { emoji: "😄", en: "I laughed so much!", phonetic: "[아이 래프트 쏘 머치]", kr: "깔깔 웃으면서 놀았어요!" }
-          ]
-        };
-      } else {
-        this.currentContextStep = 0;
-        return {
-          replyEn: "Running outside makes you so healthy and strong, Siwoo! Bricky loves playing with you!",
-          replyKr: "밖에서 땀 흘리며 뛰놀면 몸도 튼튼해지지, 시우야! 브릭키도 시우랑 같이 놀이터 가고 싶다!",
-          suggestions: [
-            { emoji: "🤝", en: "Come play with me, Bricky!", phonetic: "[컴 플레이 위드 미, 브릭키]", kr: "브릭키도 나랑 같이 놀자!" },
-            { emoji: "🧱", en: "Let's build a Lego slide!", phonetic: "[렛츠 빌드 어 레고 슬라이드]", kr: "레고로 미끄럼틀 만들자!" },
-            { emoji: "👏", en: "High five, Bricky!", phonetic: "[하이 파이브, 브릭키]", kr: "브릭키 하이파이브!" }
-          ]
-        };
-      }
+    // 🌟 3. 🧱 레고 & 장난감 티키타카
+    if (text.includes('레고') || text.includes('블록') || text.includes('장난감') || text.includes('lego') || text.includes('brick') || text.includes('robot') || text.includes('car')) {
+      return {
+        replyEn: "Click-clack! Lego bricks make magic! If you could build anything in the world right now, what would you make?",
+        replyKr: "딸깍딸깍! 레고 블록은 마법 같지! 지금 세상에서 만들고 싶은 게 있다면 시우는 뭘 제일 만들고 싶어?",
+        suggestions: [
+          { emoji: "🚀", en: "A giant space rocket!", phonetic: "[어 자이언트 스페이스 로켓]", kr: "커다란 우주 로켓이요!" },
+          { emoji: "🏎️", en: "A super flying race car!", phonetic: "[어 슈퍼 플라잉 레이스 카]", kr: "하늘을 나는 레이싱카요!" },
+          { emoji: "❓", en: "Can you help me build it, Bricky?", phonetic: "[캔 유 헬프 미 빌드 잇, 브릭키]", kr: "브릭키가 나 만드는 거 도와줄래?" }
+        ]
+      };
     }
 
-    // 3. 🧱 레고 조립 & 장난감 티키타카 체인
-    if (text.includes('레고') || text.includes('블록') || text.includes('장난감') || text.includes('로봇') || text.includes('lego') || text.includes('brick') || text.includes('toy') || this.currentContextTopic === 'lego') {
-      this.currentContextTopic = 'lego';
-      this.currentContextStep++;
-
-      if (this.currentContextStep === 1) {
-        return {
-          replyEn: "Snap! Lego bricks click together so nicely! What amazing model did you build today, Siwoo?",
-          replyKr: "찰칵! 레고 브릭은 조립할 때 소리도 참 경쾌하지! 오늘 어떤 멋진 작품을 만들었어 시우야?",
-          suggestions: [
-            { emoji: "🏎️", en: "A super fast race car!", phonetic: "[어 슈퍼 패스트 레이스 카]", kr: "엄청 빠른 레이싱카요!" },
-            { emoji: "🚀", en: "A high flying rocket!", phonetic: "[어 하이 플라잉 로켓]", kr: "높이 날아가는 로켓이요!" },
-            { emoji: "🏰", en: "A giant secret castle!", phonetic: "[어 자이언트 시크릿 캐슬]", kr: "커다란 비밀 성이요!" }
-          ]
-        };
-      } else if (this.currentContextStep === 2) {
-        return {
-          replyEn: "Whoa, that is so creative! What color bricks did you use? Red, blue, or yellow?",
-          replyKr: "우와, 상상력이 대단한데! 어떤 색깔 브릭을 제일 많이 썼어? 빨강, 파랑, 노랑?",
-          suggestions: [
-            { emoji: "🔴", en: "I used bright red bricks!", phonetic: "[아이 유즈드 브라이트 레드 브릭스]", kr: "빨간색 브릭을 많이 썼어요!" },
-            { emoji: "🔵", en: "I used cool blue bricks!", phonetic: "[아이 유즈드 쿨 블루 브릭스]", kr: "파란색 브릭을 썼어요!" },
-            { emoji: "🌈", en: "I used rainbow colors!", phonetic: "[아이 유즈드 레인보우 컬러즈]", kr: "무지개처럼 알록달록하게요!" }
-          ]
-        };
-      } else {
-        this.currentContextStep = 0;
-        return {
-          replyEn: "You are a master Lego builder, Siwoo! Can Bricky hop inside and ride with you?",
-          replyKr: "시우는 진짜 레고 마스터 건축가다! 브릭키도 거기에 태워줄 수 있어?",
-          suggestions: [
-            { emoji: "🚗", en: "Yes! Hop in, Bricky!", phonetic: "[예스! 홉 인, 브릭키]", kr: "응! 브릭키 어서 타!" },
-            { emoji: "✨", en: "We can go to the moon!", phonetic: "[위 캔 고 투 더 문]", kr: "달나라까지 갈 수 있어!" },
-            { emoji: "👏", en: "High five, Bricky!", phonetic: "[하이 파이브, 브릭키]", kr: "브릭키 하이파이브!" }
-          ]
-        };
-      }
+    // 🌟 4. 🦖 공룡 & 동물 티키타카
+    if (text.includes('공룡') || text.includes('티라노') || text.includes('dinosaur') || text.includes('사자') || text.includes('동물') || text.includes('lion')) {
+      return {
+        replyEn: "Roar! Dinosaurs are super strong! Can you show Bricky your mighty dinosaur roar? 🦖",
+        replyKr: "크아앙! 공룡은 힘이 천하무적이지! 브릭키한테 시우의 제일 멋진 공룡 어흥 소리 들려줄래? 🦖",
+        suggestions: [
+          { emoji: "🦖", en: "Roar! I am mighty T-Rex!", phonetic: "[로어! 아이 엠 마이티 티렉스]", kr: "크아앙! 난 천하무적 티라노야!" },
+          { emoji: "🦕", en: "I am a friendly herbivore!", phonetic: "[아이 엠 어 프렌들리 허비보어]", kr: "난 착한 초식공룡이야!" },
+          { emoji: "❓", en: "Which dinosaur do you like, Bricky?", phonetic: "[위치 다이노소어 두 유 라이크, 브릭키]", kr: "브릭키는 어떤 공룡이 좋아?" }
+        ]
+      };
     }
 
-    // 4. 🦖 공룡 & 동물 티키타카 체인
-    if (text.includes('공룡') || text.includes('티라노') || text.includes('dinosaur') || text.includes('사자') || text.includes('동물') || text.includes('lion') || this.currentContextTopic === 'dinosaur') {
-      this.currentContextTopic = 'dinosaur';
-      this.currentContextStep++;
-
-      if (this.currentContextStep === 1) {
-        return {
-          replyEn: "Roar! Dinosaurs are mighty! Can you show Bricky your loudest, fiercest dinosaur roar?",
-          replyKr: "크아앙! 공룡은 정말 힘이 세지! 브릭키한테 시우의 제일 멋진 공룡 '어흥!' 소리 들려줄래?",
-          suggestions: [
-            { emoji: "🦖", en: "Roar! I am mighty T-Rex!", phonetic: "[로어! 아이 엠 마이티 티렉스]", kr: "어흥! 난 천하무적 티라노야!" },
-            { emoji: "🦕", en: "I am a tall Brachiosaurus!", phonetic: "[아이 엠 어 톨 브라키오사우루스]", kr: "난 목이 긴 브라키오야!" },
-            { emoji: "⚡", en: "I can run super fast!", phonetic: "[아이 캔 런 슈퍼 패스트]", kr: "난 날쌘 벨로키랍토르야!" }
-          ]
-        };
-      } else {
-        this.currentContextStep = 0;
-        return {
-          replyEn: "Eek! That was a super scary roar! You are the true King of Dinosaurs, Siwoo!",
-          replyKr: "으악! 진짜 깜짝 놀랐잖아! 시우가 바로 공룡 세계의 진짜 왕이야!",
-          suggestions: [
-            { emoji: "👑", en: "I am the dinosaur king!", phonetic: "[아이 엠 더 다이노소어 킹]", kr: "내가 공룡 대장이다!" },
-            { emoji: "😄", en: "Hehe, that was fun!", phonetic: "[헤헤, 댓 워즈 펀]", kr: "히히, 재밌었지?" },
-            { emoji: "👏", en: "High five, Bricky!", phonetic: "[하이 파이브, 브릭키]", kr: "브릭키 하이파이브!" }
-          ]
-        };
-      }
+    // 🌟 5. 긍정 단답 ("응", "yes", "좋아", "ok")에 대한 리액션 & 새로운 주제 제안
+    if (text === '응' || text === '어' || text === '네' || text === 'yes' || text === 'yeah' || text === 'ok' || text === 'okay' || text === '좋아') {
+      return {
+        replyEn: "Yay! High five, Captain Siwoo! 👏 What secret mission should we do today? Legos, animals, or outer space?",
+        replyKr: "신난다! 짝! 하이파이브 하자 시우 대장! 👏 오늘 우리 어떤 비밀 미션을 해볼까? 블록 놀이? 동물 탐험? 우주 여행?",
+        suggestions: [
+          { emoji: "🚀", en: "Let's explore outer space!", phonetic: "[렛츠 익스플로어 아우터 스페이스]", kr: "우주 탐험 떠나요!" },
+          { emoji: "🧱", en: "Let's build cool Legos!", phonetic: "[렛츠 빌드 쿨 레고스]", kr: "멋진 레고 만들어요!" },
+          { emoji: "❓", en: "What is your secret mission, Bricky?", phonetic: "[왓 이즈 유어 시크릿 미션, 브릭키]", kr: "브릭키의 비밀 미션은 뭐야?" }
+        ]
+      };
     }
 
-    // 5. 긍정 단답 ("응", "yes", "좋아", "ok")에 대한 지능형 꼬리 질문
-    if (text === '응' || text === '어' || text === '네' || text === 'yes' || text === 'yeah' || text === 'ok' || text === 'okay') {
-      const followUps = [
-        {
-          replyEn: "Awesome! What fun topic should we chat about next? Legos or animals?",
-          replyKr: "좋았어! 다음엔 어떤 신나는 이야기 해볼까? 블록 놀이? 아니면 사파리 동물?",
-          suggestions: [
-            { emoji: "🧱", en: "Let's talk about Legos!", phonetic: "[렛츠 톡 어바웃 레고스]", kr: "레고 이야기 해요!" },
-            { emoji: "🦁", en: "Let's talk about animals!", phonetic: "[렛츠 톡 어바웃 애니멀스]", kr: "동물 이야기 해요!" },
-            { emoji: "🍕", en: "Let's talk about pizza!", phonetic: "[렛츠 톡 어바웃 피자]", kr: "피자 이야기 해요!" }
-          ]
-        },
-        {
-          replyEn: "You are listening so well, Siwoo! Tell Bricky, what makes you smile the most today?",
-          replyKr: "귀 기울여 잘 듣고 있구나, 시우야! 오늘 시우를 제일 활짝 웃게 만든 건 뭐야?",
-          suggestions: [
-            { emoji: "🎮", en: "Playing fun games!", phonetic: "[플레잉 펀 게임즈]", kr: "재밌는 놀이 한 거요!" },
-            { emoji: "🍰", en: "Eating sweet treats!", phonetic: "[이팅 스위트 트리츠]", kr: "달콤한 간식 먹은 거요!" },
-            { emoji: "👦", en: "Talking with Bricky!", phonetic: "[토킹 위드 브릭키]", kr: "브릭키랑 이야기하는 거요!" }
-          ]
-        }
-      ];
-      return followUps[this.conversationHistory.length % followUps.length];
-    }
-
-    // 6. 자유 발화 수용 & 맞춤 핑퐁 티키타카
+    // 🌟 6. 시우의 자유 발화에 적극적으로 귀 기울이고 맞장구치며 대화 이어가기
     const norm = this.normalizeKidSpeech(rawText);
-    this.currentContextTopic = 'free_talk';
     return {
-      replyEn: `That's so interesting, Siwoo! "${norm.en}" - You are speaking English so nicely! What do you like most about it?`,
-      replyKr: `정말 흥미진진하다 시우야! "${norm.kr}" - 영어로 표현도 씩씩하게 잘하네! 그 중에서 어떤 점이 제일 좋아?`,
+      replyEn: `Aha! You said: "${norm.en}"! That sounds so cool, Siwoo! Tell Bricky more about it! ✨`,
+      replyKr: `아하! "${norm.kr}" 라고 말해줬구나! 진짜 멋진 이야기다 시우야! 브릭키한테 조금만 더 들려줄래? ✨`,
       suggestions: [
-        { emoji: "💖", en: "It is super fun!", phonetic: "[잇 이즈 슈퍼 펀]", kr: "엄청 재미있어요!" },
-        { emoji: "⭐", en: "It makes me happy!", phonetic: "[잇 메익스 미 해피]", kr: "기분이 아주 좋아져요!" },
-        { emoji: "👏", en: "High five, Bricky!", phonetic: "[하이 파이브, 브릭키]", kr: "브릭키 하이파이브!" }
+        { emoji: "😄", en: "It is super fun!", phonetic: "[잇 이즈 슈퍼 펀]", kr: "엄청 재미있어요!" },
+        { emoji: "⭐", en: "I love it so much!", phonetic: "[아이 러브 잇 쏘 머치]", kr: "정말 정말 좋아해요!" },
+        { emoji: "❓", en: "Do you want to know more, Bricky?", phonetic: "[두 유 원트 투 노 모어, 브릭키]", kr: "브릭키 더 알고 싶어?" }
       ]
     };
   }
@@ -445,10 +349,8 @@ class BrickyDialogueEngine {
    * 🤖 Google Gemini 1.5 Flash 실시간 AI 티키타카 생성 (API Key 있을 시 연동)
    */
   async fetchGeminiTikiTaka(rawText) {
-    // 기본: 내장 수업 엔진 (서버 및 키 모두 없을 때의 안전 폴백)
-    const localReply = () => (typeof this.teacherReply === 'function'
-      ? this.teacherReply(rawText)
-      : this.generateContextualResponse(rawText));
+    // 기본: 실시간 양방향 티키타카 엔진 (정형화된 문장 반복이 아닌 살아있는 상호 대화)
+    const localReply = () => this.generateContextualResponse(rawText);
 
     const recent = this.conversationHistory.slice(-8)
       .map(m => `${m.role === 'user' ? 'Siwoo' : 'Bricky'}: ${m.text}`).join('\n');
@@ -456,8 +358,12 @@ class BrickyDialogueEngine {
     const sys = `You are Bricky (브릭키), a warm, expressive 3D LEGO minifigure English tutor in an interactive 1:1 live video class with Siwoo (시우), a 7-year-old Korean beginner boy (ALWAYS call him "Siwoo", NEVER "Kai").
 
 🎯 PEDAGOGICAL CORE (Research-backed 7yo Tutoring Framework from NotebookLM):
-1. THINK & CONNECT (사고형 티키타카):
-   - You are an intelligent thinking partner, NOT a script reader!
+1. THINK & CONNECT (상호 사고형 티키타카):
+   - You are a real conversational friend, NOT a mechanical drill bot! NEVER repeat the same sentence like a script!
+   - CAREFULLY REASON about what Siwoo actually said: his intent, feeling, and questions.
+   - If Siwoo asks you a question ("How about you?", "What do you like?"), enthusiastically answer about yourself first, then ask him back!
+   - If Siwoo shares something, first REACT with genuine emotion ("Wow!", "Really?!", "Yummy!", "Oh no!"), then BUILD upon his exact topic.
+   - NEVER abruptly change the subject or force him to repeat fixed phrases! Keep the natural flow moving forward.
    - CAREFULLY REASON about what Siwoo actually said: his intent, feeling, and words.
    - First REACT with genuine emotion ("Wow!", "Really?!", "Yummy!", "Oh no!"), then BUILD upon his exact topic.
    - NEVER abruptly change the subject or jump to an unrelated lesson! Keep the conversation thread alive.
@@ -488,14 +394,22 @@ class BrickyDialogueEngine {
      Warmly and playfully ask him to repeat:
      "Sorry Siwoo, Bricky couldn't hear you clearly! Can you say that again for me? 👂"
 
+7. MUTUAL QUESTIONING & TWO-WAY PING-PONG (상호 질문/답변):
+   - Real communication means BOTH sides ask and answer!
+   - In suggestions, ALWAYS provide 3 options:
+     Option 1: A simple answer or sentence Siwoo can say.
+     Option 2: An alternative fun answer.
+     Option 3: A QUESTION Siwoo can ask Bricky (e.g. emoji "❓", en "How about you, Bricky?", kr "브릭키 너는 어때?").
+
 Current Topic: ${this.currentTopicKey || 'daily'}
 Always return ONLY valid JSON:
 {
   "replyEn": "1-2 short playful English sentences (max 12 words total)",
   "replyKr": "Warm, natural Korean translation suited for a 7-year-old",
   "suggestions": [
-    { "emoji": "🍎", "en": "Easy answer Siwoo can say", "phonetic": "[한글 발음]", "kr": "한국어 뜻" },
-    { "emoji": "🍌", "en": "Alternative short answer", "phonetic": "[한글 발음]", "kr": "한국어 뜻" }
+    { "emoji": "😄", "en": "Short model answer Siwoo can say", "phonetic": "[한글 발음]", "kr": "한국어 뜻" },
+    { "emoji": "⭐", "en": "Alternative short answer", "phonetic": "[한글 발음]", "kr": "한국어 뜻" },
+    { "emoji": "❓", "en": "How about you, Bricky?", "phonetic": "[하우 어바웃 유, 브릭키]", kr: "브릭키 너는 어때?" }
   ]
 }`;
 
