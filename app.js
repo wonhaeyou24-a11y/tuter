@@ -751,6 +751,7 @@ class ZoomBrickTalkApp {
     if (this.dom.bigMicBtn) {
       this.dom.bigMicBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        if (this.isRecording) {
           // 만약 시우가 방금 말을 마쳤고 내용이 있다면 즉시 제출
           const hasSpeech = window.kidSpeech && (
             (window.kidSpeech.speechBuffer && window.kidSpeech.speechBuffer.trim().length > 0) ||
