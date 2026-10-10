@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>BrickTalk Live - 시우와 브릭키의 1:1 레고 화상 영어</title>
+  <meta name="description" content="시우와 3D 레고 튜터 브릭키의 줌 스타일 50:50 실시간 웹캠 1:1 화상 영어 회화 룸">
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Nanum+Gothic:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 전체 화면 100vh 줌(Zoom) 스타일 1:1 화상 통화 컨테이너 -->
+  <div class="zoom-call-app" id="zoom-call-app">
+
+    <!-- 1. 상단 화상 통화 헤더 바 -->
+    <header class="zoom-header" id="zoom-header">
+      <div class="header-left">
+        <div class="live-indicator-pill">
+          <span class="pulsing-green-dot"></span>
+          <span class="live-text">LIVE 1:1 CALL</span>
+          <span class="call-timer" id="call-timer">00:00</span>
+        </div>
+        <div class="tutor-badge-pill">
+          <span class="brick-emoji">🧱</span>
+          <span class="tutor-name">Bricky</span>
+          <span class="tutor-tag">Lego Tutor</span>
+        </div>
+        <nav class="topic-tabs-group" id="topic-scroll-bar">
+          <button class="topic-tab-btn active" data-topic="daily">🌟 안녕 시우</button>
+          <button class="topic-tab-btn" data-topic="lego_build">🧱 레고 만들기</button>
+          <button class="topic-tab-btn" data-topic="animals">🦁 사파리 동물</button>
+          <button class="topic-tab-btn" data-topic="food">🍕 간식 파티</button>
+        </nav>
+      </div>
+
+      <div class="header-right">
+        <button class="lang-toggle-pill" id="stt-lang-btn" title="음성 인식 언어 변경 (영어 / 한국어)">
+          <span id="stt-lang-flag">🇺🇸</span>
+          <span id="stt-lang-label">영어 인식 (English)</span>
+        </button>
+        <div class="ai-status-pill" id="ai-status-pill" title="실시간 티키타카 AI 활성화됨">
+          <span class="ai-sparkle">✨</span>
+          <span id="ai-status-text">티키타카 ON</span>
+        </div>
+        <div class="stars-counter-badge" id="star-badge" title="모은 황금 브릭">
+          <span>⭐</span>
+          <span id="star-count">18</span>
+          <span class="stars-unit">Bricks</span>
+        </div>
+        <button class="parent-gate-btn" id="parent-lock-btn" title="보호자 안심 설정">
+          <span>🔒</span>
+          <span>안심 모드</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. 중앙 50:50 분할 화상 회의 스테이지 (Zoom Split View) -->
+    <main class="zoom-split-stage" id="zoom-split-stage">
+
+      <!-- [좌측 50%] 레고 튜터 브릭키(Bricky)의 화상 피드 -->
+      <section class="video-panel tutor-panel" id="teddy-container">
+        <div class="video-feed-box tutor-feed" id="tutor-feed-box">
+          <!-- 1. 평상시 기본 미소 짓는 레고 튜터 -->
+          <img 
+            id="bricky-live-img" 
+            class="bricky-live-stream active" 
+            src="bricky_tutor.jpg" 
+            alt="3D 레고 튜터 브릭키 기본 피드"
+          >
+          <div class="tutor-voice-bars" id="tutor-voice-bars"><span></span><span></span><span></span><span></span></div>
+
+          <!-- 좌측 상단 상태 뱃지 -->
+          <div class="feed-top-pill" id="live-tag">
+            <span class="pill-dot" id="live-tag-icon">🎙️</span>
+            <span id="live-tag-text">Bricky와 대화할 준비 완료!</span>
+          </div>
+
+          <!-- 좌측 하단 이름표 -->
+          <div class="feed-overlay-tag tutor-tag">
+            <span class="tag-status-dot green"></span>
+            <span class="tag-name">Bricky (Lego Explorer)</span>
+          </div>
+
+          <!-- 💬 레고 선생 전용 하단 자막 바 (화면을 가리지 않음) -->
+          <div class="tutor-subtitle-bar" id="speech-bubble">
+            <div class="sub-speaker-tag">🧱 Bricky</div>
+            <div class="sub-text-wrap">
+              <div class="sub-en-text" id="en-text">Hi Siwoo! It's your Lego friend Bricky! How are you feeling today? ☀️</div>
+              <div class="sub-kr-text" id="kr-text">안녕 시우야! 레고 친구 브릭키야! 오늘 기분이 어때?</div>
+            </div>
+            <button class="sub-sound-btn" id="replay-audio-btn" title="다시 듣기">🔊</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- [우측 50%] 시우의 실제 라이브 웹캠 피드 -->
+      <section class="video-panel student-panel" id="student-panel">
+        <div class="video-feed-box student-feed">
+          <!-- 실제 시우 웹캠 스트림 -->
+          <video id="user-webcam" class="user-webcam-stream" autoplay playsinline muted></video>
+
+          <!-- 웹캠 미연결 시 폴백 -->
+          <div class="webcam-fallback" id="webcam-fallback">
+            <div class="fallback-avatar-circle">
+              <span class="fallback-emoji">👦</span>
+            </div>
+            <p class="fallback-title">시우의 화상 카메라</p>
+            <button class="cam-start-btn" id="cam-start-btn">📷 카메라 켜기</button>
+          </div>
+
+          <!-- 🌟 시우 발화 턴 비주얼 임팩트 배너 (내가 말해야 할 타이밍에 나타남) -->
+          <div class="turn-indicator-banner" id="turn-indicator-banner" style="display: none;">
+            <span class="turn-pulse-icon">🎙️</span>
+            <span class="turn-text">시우 차례예요! 지금 말해보세요!</span>
+            <span class="turn-sparkle">✨</span>
+          </div>
+
+          <!-- 우측 상단 음성 감지 상태 뱃지 -->
+          <div class="feed-top-pill student-listen-pill" id="mic-status-pill">
+            <span class="pill-dot green">👂</span>
+            <span id="mic-status-pill-text">경청 중 (편하게 말씀하세요)</span>
+          </div>
+
+          <!-- 우측 하단 이름표 -->
+          <div class="feed-overlay-tag student-tag">
+            <span class="tag-status-dot green" id="user-cam-status-dot"></span>
+            <span class="tag-name">시우 (Siwoo, 7세)</span>
+            <div class="audio-wave-meter" id="audio-wave-meter">
+              <span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <!-- 💬 시우 전용 하단 자막 바 (내가 말할 때만 우측 하단에 자막 팝업) -->
+          <div class="kai-subtitle-bar" id="student-speech-pill" style="display: none;">
+            <div class="kai-speaker-tag">👦 Siwoo</div>
+            <div class="kai-spoken-wrap">
+              <div class="kai-spoken-en" id="student-spoken-text">"I am happy!"</div>
+              <div class="kai-spoken-kr" id="student-spoken-kr">"기분이 아주 좋아요!"</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 3. 하단 슬림 추천 발화 브릭 칩 바 (화면 얼굴을 가리지 않음) -->
+    <div class="suggestions-deck-bar" id="cards-grid">
+      <!-- 자바스크립트로 동적 렌더링 -->
+    </div>
+
+    <!-- 4. 하단 Zoom 스타일 화상 회의 컨트롤 툴바 -->
+    <footer class="zoom-bottom-toolbar" id="zoom-bottom-toolbar">
+      
+      <!-- 좌측: 오디오 / 비디오 토글 -->
+      <div class="toolbar-section toolbar-media">
+        <button class="zoom-tool-btn mic-btn active" id="big-mic-btn" title="마이크 음소거 / 말하기">
+          <div class="tool-icon-circle" id="mic-btn-wrapper">
+            <span class="tool-icon">🎤</span>
+          </div>
+          <div class="tool-label-group">
+            <span class="tool-title" id="mic-guide-text">핸즈프리 ON</span>
+            <span class="tool-sub">말씀하시면 즉시 대답해요</span>
+          </div>
+        </button>
+
+        <button class="zoom-tool-btn cam-btn active" id="toggle-cam-btn" title="카메라 켜기 / 끄기">
+          <div class="tool-icon-circle">
+            <span class="tool-icon" id="cam-icon">📹</span>
+          </div>
+          <div class="tool-label-group">
+            <span class="tool-title" id="cam-label">카메라 ON</span>
+            <span class="tool-sub">시우 웹캠 작동 중</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- 중앙: 4대 레고 리액션 & 표현 선물 런처 -->
+      <div class="toolbar-section toolbar-reactions" id="reaction-bar">
+        <span class="reactions-guide">✨ 리액션 선물:</span>
+        <button class="brick-react-btn" id="feed-apple-btn" title="달콤 사과">🍎 사과</button>
+        <button class="brick-react-btn" id="send-balloon-btn" title="하늘 풍선">🎈 풍선</button>
+        <button class="brick-react-btn" id="high-five-btn" title="하이파이브">👏 하이파이브</button>
+        <button class="brick-react-btn shuffle-btn" id="shuffle-btn" title="다른 표현">🎲 다른 말</button>
+      </div>
+
+      <!-- 우측: 수업 종료 -->
+      <div class="toolbar-section toolbar-actions">
+        <button class="end-call-btn" id="end-call-btn" title="화상 통화 종료">
+          <span>📞</span>
+          <span>수업 종료</span>
+        </button>
+      </div>
+
+    </footer>
+
+    <!-- 5. 상단 플로팅 칭찬 토스트 배너 -->
+    <div class="praise-banner" id="praise-banner">
+      <span id="praise-icon">🎉</span>
+      <span id="praise-msg">Great Job Siwoo! 발음 최고예요!</span>
+    </div>
+
+    <!-- 6. 보호자 안심 게이트 모달 -->
+    <div class="modal-overlay" id="parent-modal">
+      <div class="parent-dialog">
+        <div class="dialog-title">🔒 부모님 안심 설정</div>
+        <div class="dialog-desc" id="parent-gate-desc">아이의 실수 조작을 방지하기 위해 간단한 문제를 풀어주세요.</div>
+        
+        <div id="parent-math-view">
+          <div class="math-question" id="math-q">15 + 8 = ?</div>
+          <input type="number" class="dialog-input" id="math-ans" placeholder="정답 입력">
+          <div class="dialog-actions">
+            <button class="dialog-btn cancel" id="modal-cancel">닫기</button>
+            <button class="dialog-btn confirm" id="modal-confirm">확인</button>
+          </div>
+        </div>
+
+        <!-- 인증 후 노출되는 고급 AI 티키타카 설정 뷰 -->
+        <div id="parent-ai-settings-view" style="display: none; text-align: left;">
+          <div class="ai-setting-box">
+            <label class="setting-label">🤖 Google Gemini API 키 (선택 사항)</label>
+            <p class="setting-hint">키를 등록하면 Gemini 1.5 Flash가 브릭키와 시우의 실시간 자유 대화를 100% 무한 연결합니다. (미입력 시 내장 멀티턴 고도화 엔진 자동 작동)</p>
+            <input type="password" class="setting-input" id="gemini-api-key" placeholder="AIzaSy... (API Key 입력)">
+            <div class="setting-status" id="gemini-status-text">상태: ⚡ 내장 초지능 티키타카 엔진 작동 중</div>
+          </div>
+          <div class="dialog-actions" style="margin-top: 16px;">
+            <button class="dialog-btn cancel" id="ai-settings-close">완료</button>
+            <button class="dialog-btn confirm" id="ai-settings-save">저장하기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. 🌟 화상 통화 종료 및 학습 리포트 모달 (수업 종료 시 확실하게 오픈) -->
+    <div class="modal-overlay" id="call-summary-modal">
+      <div class="summary-dialog">
+        <div class="summary-header">
+          <div class="trophy-badge">🏆</div>
+          <h2 class="summary-title">오늘의 화상 영어 완료!</h2>
+          <p class="summary-sub">시우(Siwoo)는 오늘 멋진 영어 챔피언이었어요!</p>
+        </div>
+        
+        <div class="summary-stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">⏱️ 수업 시간</span>
+            <span class="stat-val" id="summary-duration">00:00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">⭐ 모은 브릭</span>
+            <span class="stat-val" id="summary-stars">18 Bricks</span>
+          </div>
+        </div>
+
+        <div class="summary-tutor-cheer">
+          <img src="bricky_tutor.jpg" class="summary-avatar" alt="Bricky">
+          <div class="summary-cheer-bubble">
+            "시우야, 오늘 브릭키랑 신나게 이야기해줘서 정말 고마워! 다음 시간에도 또 재밌게 놀자! 🧱✨"
+          </div>
+        </div>
+
+        <div class="summary-actions">
+          <button class="dialog-btn restart-btn" id="restart-call-btn">🔄 다시 수업 시작하기</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 보안 & 사운드 & 대화엔진 & 음성 & 메인 로직 스크립트 로드 -->
+  <script src="crypto.js"></script>
+  <script src="sound.js"></script>
+  <script src="dialogue.js"></script>
+  <script src="teacher.js"></script>
+  <script src="speech.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

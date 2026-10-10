@@ -1,0 +1,14 @@
+# 보안 및 로컬 인증서 (절대 깃허브에 올리지 않음)
+key.pem
+cert.pem
+.env
+*.local
+
+# 임시 및 테스트 스크립트
+_*
+*.log
+
+# 의존성
+node_modules/
+.DS_Store
+Thumbs.db
