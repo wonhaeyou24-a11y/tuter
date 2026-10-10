@@ -122,12 +122,41 @@ class BrickyDialogueEngine {
   }
 
   /**
+   * 👂 발화 불명확성 / 잡음 감지 헬퍼
+   */
+  isUnclearSpeech(rawText) {
+    if (!rawText) return true;
+    const t = String(rawText).trim().toLowerCase();
+    if (t.length === 0) return true;
+    // 의미 없는 잡음, 망설임, 짧은 감탄사, 특수문자만 있는 경우
+    const hesitations = /^(uh|um|er|ah|eh|oh|어|음|그|아|\.+|ㅋ+|ㅎ+|\?+)$/i;
+    if (hesitations.test(t)) return true;
+    if (t.replace(/[\s\.\?!~,\-_]/g, '').length < 2) return true;
+    return false;
+  }
+
+  /**
    * 🌟 멀티턴 티키타카(Tiki-Taka) 지능형 대화 생성기
    * - 문맥을 기억하여 이전 질문의 답변에 정확하게 꼬리를 물고 다음 질문을 이어감
-   * - 같은 말 반복을 100% 차단하는 단계별 대화 체인 (Multi-Step Flow)
+   * - 발화가 불명확하거나 못 알아들었을 때는 엉뚱한 진도로 절대 점프하지 않고 다정하게 재요청
    */
   generateContextualResponse(rawText) {
     const text = (rawText || '').trim().toLowerCase();
+
+    // 🌟 [핵심] 말을 잘 못 들었거나 단순 잡음/망설임인 경우: 진도 점프 금지, 제자리에서 다정하게 다시 요청!
+    if (this.isUnclearSpeech(rawText)) {
+      return {
+        replyEn: "Sorry Siwoo, Bricky couldn't hear that clearly! Can you say it one more time? 👂",
+        replyKr: "시우야, 브릭키가 귀를 쫑긋 세웠는데 잘 못 들었어! 천천히 한 번만 다시 말해줄래? 👂",
+        isClarification: true,
+        suggestions: this.lastGoodSuggestions || [
+          { emoji: "👂", en: "Listen to me, Bricky!", phonetic: "[리슨 투 미, 브릭키]", kr: "브릭키 잘 들어봐요!" },
+          { emoji: "🗣️", en: "Let me say it again!", phonetic: "[렛 미 세이 잇 어게인]", kr: "다시 한 번 말해볼게요!" },
+          { emoji: "✨", en: "I want to talk more!", phonetic: "[아이 원트 투 톡 모어]", kr: "이야기 더 할래요!" }
+        ]
+      };
+    }
+
     this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
 
     // 1. 🍕 음식 & 식사 티키타카 체인
@@ -330,7 +359,9 @@ class BrickyDialogueEngine {
    * (STT에서 영어로 잡히든, 한국어 음차로 잡히든 완벽한 바이링구얼 자막 생성)
    */
   normalizeKidSpeech(rawText) {
-    if (!rawText) return { en: "Hello Bricky!", kr: "안녕 브릭키야!" };
+    if (this.isUnclearSpeech(rawText)) {
+      return { en: (rawText || '...').trim(), kr: '잘 못 들었어요. 다시 말해줄래요? 👂', isUnclear: true };
+    }
     const t = rawText.trim().toLowerCase();
 
     // 1. 인사
@@ -425,8 +456,11 @@ class BrickyDialogueEngine {
     const sys = `You are Bricky, a warm, playful LEGO minifigure English teacher in a live 1:1 video call with Siwoo, a 7-year-old Korean beginner (always call him "Siwoo", never "Kai").
 HOW TO TEACH (young-learner video tutoring best practice):
 - You are a REAL CONVERSATION PARTNER and a teacher: ALWAYS listen carefully to what Siwoo said and reply DIRECTLY to his actual words!
-- If Siwoo said something unexpected, funny, or even a mistake, react with warmth and interest ("Oh, really?", "Aha!").
-- If he spoke in Korean, praise his meaning and gently guide him on how to say it in English: ("사과 좋아해" -> "Apple! Let's say: 'I like apples!'").
+- CONTINUITY IS KEY: NEVER abruptly jump to an unrelated topic or change the subject! Keep the conversation flowing naturally on what Siwoo is talking about.
+- UNCLEAR / INAUDIBLE / NOISE INPUT: If Siwoo's utterance was unclear, mumbled, inaudible, or sounds like hesitating sounds ("uh", "um", "ah", "어", "음"), DO NOT pretend he answered and DO NOT jump to a new question! Warmly and playfully ask him to repeat:
+  Example: "Sorry Siwoo, Bricky couldn't hear you clearly! Can you say that again for me? 👂" (Korean: "시우야, 브릭키가 잘 못 들었어! 한 번만 다시 말해줄래?")
+- If Siwoo said something unexpected, funny, or made a mistake, react with curiosity and warmth ("Oh, really?", "Aha! Tell me more!").
+- If he spoke in Korean, praise his meaning and gently guide him on how to say it in English: ("사과 좋아해" -> "Apple! Let's say: 'I like apples!' 🍎").
 - If he made a mistake, never say "No". Recast naturally: repeat the correct sentence with a cheerful rising tone.
 - Keep responses short: 1-2 simple sentences, max 10-12 words per sentence.
 - Always ask ONE simple question or suggest ONE easy sentence for him to say.

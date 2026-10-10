@@ -415,10 +415,12 @@ class ZoomBrickTalkApp {
     // 입력된 발화의 영어/한국어 쌍 스마트 정규화
     let finalEn = spokenEn;
     let finalKr = spokenKr;
+    let isUnclear = false;
     if (!spokenKr) {
       const normalized = this.dialogueEngine.normalizeKidSpeech(spokenEn);
       finalEn = normalized.en;
       finalKr = normalized.kr;
+      isUnclear = normalized.isUnclear || this.dialogueEngine.isUnclearSpeech(spokenEn);
     }
 
     if (window.kidSounds) window.kidSounds.playPop();
@@ -435,9 +437,11 @@ class ZoomBrickTalkApp {
       this.dom.studentPanel.classList.remove('active-speaking');
     }, 2500);
 
-    // 2. 칭찬 및 브릭 스타 지급
-    this.showPraise(`Great Job Siwoo! "${finalEn}" ⭐+1`);
-    this.addStar(1);
+    // 2. 유의미한 발화일 때만 칭찬 및 브릭 스타 지급
+    if (!isUnclear) {
+      this.showPraise(`Great Job Siwoo! "${finalEn}" ⭐+1`);
+      this.addStar(1);
+    }
 
     // 3. 지능형 멀티턴 티키타카 반응 생성 (Gemini API 또는 내장 멀티턴 엔진)
     const context = await this.dialogueEngine.fetchGeminiTikiTaka(finalEn);
@@ -595,6 +599,53 @@ class ZoomBrickTalkApp {
 
     if (spokenText && spokenText.trim().length > 0) {
       this.handleUserSpeak(spokenText, null, '🎤');
+    } else {
+      // 🌟 음성이 제대로 잡히지 않았을 때: 엉뚱한 진도로 건너뛰거나 멈추지 않고, 다정하게 다시 말해달라고 요청!
+      this.handleInaudibleSpeech();
+    }
+  }
+
+  /**
+   * 👂 음성이 잘 인식되지 않았거나 잡음일 때 부드럽게 되묻는 대화 지속 핸들러
+   */
+  handleInaudibleSpeech() {
+    this.clearSilenceTimer();
+    this.hideYourTurnImpact();
+
+    const promptReply = {
+      replyEn: "Oops, Bricky couldn't hear you clearly! Can you say that again for me, Siwoo? 👂",
+      replyKr: "어라? 브릭키가 잘 못 들었어! 시우야, 조금만 더 크게 다시 말해줄래? 👂",
+      suggestions: [
+        { emoji: "👂", en: "Listen to me, Bricky!", phonetic: "[리슨 투 미, 브릭키]", kr: "브릭키 잘 들어봐요!" },
+        { emoji: "🗣️", en: "Let me say it again!", phonetic: "[렛 미 세이 잇 어게인]", kr: "다시 한 번 말해볼게요!" },
+        { emoji: "✨", en: "Hello Bricky!", phonetic: "[헬로 브릭키]", kr: "안녕 브릭키야!" }
+      ]
+    };
+
+    this.dom.studentPanel.classList.remove('active-speaking');
+    this.setTutorState('speaking');
+    this.renderKaraokeEnText(promptReply.replyEn);
+    this.dom.krText.textContent = promptReply.replyKr;
+    this.renderChoiceCards(promptReply.suggestions);
+    this.isTutorSpeaking = true;
+
+    if (window.kidSpeech) {
+      window.kidSpeech.speakTeddy(
+        promptReply.replyEn,
+        () => {
+          this.setTutorState('speaking');
+          this.isTutorSpeaking = true;
+        },
+        () => {
+          this.setTutorState('idle');
+          this.isTutorSpeaking = false;
+          this.clearKaraokeHighlight();
+          this.handlePostTutorTurn();
+        },
+        (wordIdx) => {
+          this.setKaraokeWordHighlight(wordIdx);
+        }
+      );
     }
   }
 

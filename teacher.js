@@ -223,6 +223,23 @@
 
     // 인사 대답 직후: 수업 시작 (워밍업 → 첫 표현 가르치기)
     if (L.step < 0) {
+      const isHesitation = /^(uh|um|er|ah|eh|oh|어|음|그|아|\.+|ㅋ+|ㅎ+|\?+)$/i.test(spoken);
+      const isTooShort = spoken.replace(/[\s\.\?!~,\-_]/g, '').length < 2;
+
+      // 발화가 없거나 단순 잡음/망설임인 경우 진도를 나가지 않고 다정하게 인사 재요청
+      if (!spoken || isHesitation || isTooShort) {
+        const cur = this.getCurrentExchange();
+        return {
+          replyEn: "Hello Siwoo! Bricky couldn't hear you clearly. Can you say 'Hello Bricky'? 👋",
+          replyKr: "안녕 시우야! 브릭키가 잘 못 들었어. 'Hello Bricky'하고 반갑게 인사해줄래? 👋",
+          suggestions: (cur && cur.choices) || [
+            { emoji: "👋", en: "Hello Bricky!", phonetic: "[헬로 브릭키]", kr: "안녕 브릭키야!" }
+          ],
+          kind: 'greeting',
+          teach: true
+        };
+      }
+
       const ack = hasHangul(spoken) ? ['Nice to talk to you!', '이야기해줘서 고마워!'] : pick(ACK_FREE, L.usedAck);
       const bridge = { en: ack[0] + " Let's play with English today!", kr: ack[1] + ' 오늘은 영어로 같이 놀아보자!' };
       return advance(this, bridge);
@@ -238,6 +255,22 @@
 
     // ----- 따라 말하기(Practice) -----
     if (step.kind === 'repeat') {
+      const isHesitation = /^(uh|um|er|ah|eh|oh|어|음|그|아|\.+|ㅋ+|ㅎ+|\?+)$/i.test(spoken);
+      const isTooShort = spoken.replace(/[\s\.\?!~,\-_]/g, '').length < 2;
+
+      // 발화가 불명확하거나 잡음인 경우: 진도 점프 금지, 다시 말해달라고 요청
+      if (!spoken || isHesitation || isTooShort) {
+        L.tries++;
+        const model = step.choices && step.choices[0] ? step.choices[0].en : step.target;
+        return {
+          replyEn: `Sorry Siwoo, Bricky couldn't hear that clearly! Can you say "${model}" again? 👂`,
+          replyKr: `시우야, 브릭키가 잘 못 들었어! "${model}" 라고 한 번만 다시 말해줄래? 👂`,
+          suggestions: step.choices || [],
+          kind: 'repeat',
+          teach: true
+        };
+      }
+
       const score = matchScore(spoken, step.target);
 
       if (hasHangul(spoken) && score < 0.5) {
@@ -270,8 +303,9 @@
 
     // ----- 내 말로 말하기(Production) -----
     if (step.kind === 'ask') {
+      const isHesitation = /^(uh|um|er|ah|eh|oh|어|음|그|아|응|\.+)$/i.test(spoken);
       const score = matchScore(spoken, step.target);
-      const alright = spoken.replace(/\s/g, '').length >= 2;
+      const meaningful = spoken.replace(/\s/g, '').length >= 3 && !isHesitation;
 
       if (hasHangul(spoken) && score < 0.5) {
         L.tries++;
@@ -280,7 +314,7 @@
         return { replyEn: `Can you say it in English? Like this, ${eg}`, replyKr: `영어로 말해볼까? 이렇게! "${eg}"`, suggestions: step.choices || [], kind: 'ask', teach: true };
       }
 
-      if (alright) {
+      if (meaningful) {
         // 올바른 틀(I am / I like ...)을 썼으면 칭찬, 아니면 자연스럽게 올바른 문장으로 다시 들려줌
         const used = score >= 0.5;
         let prefix;
@@ -296,11 +330,11 @@
       }
     }
 
-    // 알아듣지 못한 경우: 다시 말해달라고 부탁 (같은 말 반복 대신 힌트 제공)
+    // 알아듣지 못했거나 망설임 잡음인 경우: 엉뚱한 진도로 절대 넘어가지 않고, 같은 질문에 머물며 다정하게 다시 요청!
     L.tries++;
     return {
-      replyEn: 'Sorry, I could not hear you well. Can you say it again?',
-      replyKr: '잘 못 들었어요. 한 번만 다시 말해줄래요?',
+      replyEn: "Sorry Siwoo, Bricky couldn't hear that well! Can you say it one more time? 👂",
+      replyKr: "시우야, 브릭키가 잘 못 들었어! 천천히 한 번만 다시 말해줄래?",
       suggestions: step.choices || [],
       kind: step.kind,
       teach: true
