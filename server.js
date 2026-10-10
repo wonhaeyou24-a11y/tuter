@@ -2,7 +2,7 @@
  * 🧱 BrickTalk Live - 보안 로컬 AI 프록시 서버 (server.js)
  * - 정적 파일 서빙 (HTML, JS, CSS, 미디어)
  * - /api/chat 엔드포인트: 환경변수 GEMINI_API_KEY를 안전하게 활용하여
- *   클라이언트에 키 노출 없이 실시간 Gemini 3.5 Flash Lite 티키타카 제공
+ *   클라이언트에 키 노출 없이 실시간 Gemini 3.8 Flash 티키타카 제공
  */
 
 const http = require('http');
@@ -28,7 +28,7 @@ const MIME_TYPES = {
   '.wav': 'audio/wav'
 };
 
-// Gemini 3.5 Flash Lite 호출 함수
+// Gemini 3.8 Flash 호출 함수
 function callGemini(sysPrompt, userPrompt) {
   return new Promise((resolve, reject) => {
     if (!API_KEY) {

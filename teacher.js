@@ -351,9 +351,9 @@
     const model = step && step.choices && step.choices[0] ? step.choices[0].en : null;
     const lv = level || 1;
     if (lv === 1) {
-      // 1단계: 질문을 바꾸지 않고 같은 문장을 더 천천히 반복
-      const q = step ? step.en.split('. ').pop() : 'Are you there, Siwoo?';
-      return { en: q, kr: '천천히 다시 물어볼게. 편하게 대답해줘!' };
+      // 1단계: 질문을 바꾸지 않고 같은 문장을 더 천천히 반복하거나 친근한 대기 멘트
+      const q = step ? step.en.split('. ').pop() : "Bricky is listening, Siwoo! What is on your mind? 🧱";
+      return { en: q, kr: '브릭키가 귀 기울이고 있어, 시우야! 편하게 이야기해줘!' };
     }
     if (!model) return null;
     if (lv === 2) {

@@ -955,11 +955,11 @@ class ZoomBrickTalkApp {
 
     const hasKey = hasServerKey || this.dialogueEngine.hasGeminiKey();
     if (this.dom.aiStatusText) {
-      this.dom.aiStatusText.textContent = hasKey ? "🤖 Gemini 3.5 AI 연결됨" : "내장 튜터 모드";
+      this.dom.aiStatusText.textContent = hasKey ? "🤖 Gemini 3.8 AI 연결됨" : "내장 튜터 모드";
     }
     if (this.dom.geminiStatusText) {
       this.dom.geminiStatusText.textContent = hasKey 
-        ? "상태: 🟢 Google Gemini 3.5 Flash 실시간 AI 티키타카 100% 활성화됨!" 
+        ? "상태: 🟢 Google Gemini 3.8 Flash 실시간 AI 티키타카 100% 활성화됨!" 
         : "상태: ⚡ 내장 초지능 멀티턴 문맥 기억 엔진 작동 중 (키 없이도 100% 작동)";
     }
   }
