@@ -442,8 +442,8 @@ Always return ONLY valid JSON:
     }
 
     try {
-      // 실시간 키즈 화상 대화에 가장 빠르고 가벼운 초경량 저지연 모델 우선 호출
-      const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash'];
+      // 실시간 키즈 화상 대화에 가장 빠르고 최신인 공식 모델 호출
+      const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
       let parsed = null;
       let lastErr = null;
 

@@ -40,7 +40,7 @@ function callGemini(sysPrompt, userPrompt) {
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 350,
+        maxOutputTokens: 800,
         responseMimeType: 'application/json'
       }
     });
@@ -48,7 +48,7 @@ function callGemini(sysPrompt, userPrompt) {
     const req = https.request({
       hostname: 'generativelanguage.googleapis.com',
       port: 443,
-      path: '/v1beta/models/gemini-1.5-flash:generateContent',
+      path: '/v1beta/models/gemini-3.8-flash:generateContent',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -65,8 +65,20 @@ function callGemini(sysPrompt, userPrompt) {
           const parsed = JSON.parse(data);
           const rawText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
           const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-          const result = JSON.parse(cleanJson);
-          resolve(result);
+          try {
+            const result = JSON.parse(cleanJson);
+            resolve(result);
+          } catch (jsonErr) {
+            // 혹시 파싱 에러 시 단순 텍스트 기반 응답으로 자동 구제
+            resolve({
+              replyEn: cleanJson.slice(0, 100),
+              replyKr: '시우야, 브릭키가 재미있게 듣고 있어! 또 말해줘!',
+              suggestions: [
+                { emoji: '🧱', en: "I love Legos!", kr: "레고가 좋아요!" },
+                { emoji: '❓', en: "How about you, Bricky?", kr: "브릭키 너는 어때?" }
+              ]
+            });
+          }
         } catch (err) {
           reject(err);
         }

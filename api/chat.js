@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 350,
+        maxOutputTokens: 800,
         responseMimeType: 'application/json'
       }
     });
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
     const geminiReq = https.request({
       hostname: 'generativelanguage.googleapis.com',
       port: 443,
-      path: '/v1beta/models/gemini-1.5-flash:generateContent',
+      path: '/v1beta/models/gemini-3.8-flash:generateContent',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,9 +60,20 @@ module.exports = async (req, res) => {
           const parsed = JSON.parse(data);
           const rawText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
           const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-          res.status(200).json(JSON.parse(cleanJson));
+          try {
+            res.status(200).json(JSON.parse(cleanJson));
+          } catch (jsonErr) {
+            res.status(200).json({
+              replyEn: cleanJson.slice(0, 100) || "That sounds so fun, Siwoo! Tell me more!",
+              replyKr: "시우야, 듣기만 해도 진짜 재밌다! 조금만 더 들려줄래?",
+              suggestions: [
+                { emoji: "🧱", en: "I love Legos!", phonetic: "[아이 러브 레고스]", kr: "레고가 좋아요!" },
+                { emoji: "❓", en: "How about you, Bricky?", phonetic: "[하우 어바웃 유, 브릭키]", kr: "브릭키 너는 어때?" }
+              ]
+            });
+          }
         } catch (e) {
-          res.status(500).json({ error: 'JSON 파싱 오류: ' + e.message });
+          res.status(500).json({ error: 'Gemini 처리 오류: ' + e.message });
         }
       });
     });
