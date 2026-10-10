@@ -20,10 +20,11 @@ class KidSpeechEngine {
     this.lastTutorText = ''; // 브릭키가 마지막으로 말한 문장 (자기 소리 필터용)
     this.pausedForTTS = false; // TTS 중 마이크 완전 중단 여부
 
-    // 🌟 시우의 생각 및 발화 호흡을 넉넉하게 기다려주는 버퍼 & 디바운스 타이머 (기본 3.2초)
+    // 🌟 시우의 발화 호흡에 맞춘 자연스러운 디바운스 타이머 (기본 1.6초 대기 후 자동 전송)
     this.speechBuffer = '';
+    this.latestInterim = '';
     this.speechEndTimer = null;
-    this.speechEndDelayMs = parseInt(localStorage.getItem('bricktalk_wait_time') || '3200', 10); // 기본 3.2초 대기
+    this.speechEndDelayMs = parseInt(localStorage.getItem('bricktalk_wait_time') || '1600', 10);
 
 
     this.initVoices();
@@ -151,28 +152,30 @@ class KidSpeechEngine {
           if (isEcho(interimTranscript + ' ' + finalTranscript)) return;
 
           // 실시간 중간 발화(Interim) 콜백 (시우가 말하고 있음을 화면에 즉시 반응)
-          if (interimTranscript && this.onInterimCallback) {
+          if (interimTranscript) {
             const cleanInterim = this.sanitizeInput(interimTranscript);
             if (cleanInterim.length > 0) {
-              // 시우가 아직 말하는 중이므로 발화 완료 판정 보류 (타이머 리셋)
-              if (this.speechEndTimer) {
-                clearTimeout(this.speechEndTimer);
-                this.speechEndTimer = null;
-              }
+              this.latestInterim = cleanInterim;
               const preview = (this.speechBuffer ? this.speechBuffer + ' ' : '') + cleanInterim;
-              this.onInterimCallback(preview);
+              if (this.onInterimCallback) this.onInterimCallback(preview);
+
+              // 🌟 [핵심] 브라우저가 isFinal을 주지 않아도, 시우가 말을 멈추고 1.5초 지나면 무조건 자동 확정 전송!
+              if (this.speechEndTimer) clearTimeout(this.speechEndTimer);
+              this.speechEndTimer = setTimeout(() => {
+                this.flushSpeechBuffer();
+              }, this.speechEndDelayMs);
             }
           }
 
-          // 최종 확정 조각(Final) 처리 - 바로 끝내지 않고 누적 후 1.9초 대기
+          // 최종 확정 조각(Final) 처리
           if (finalTranscript) {
             const sanitized = this.sanitizeInput(finalTranscript);
             if (sanitized && sanitized.replace(/\s/g, '').length >= 1) {
               this.speechBuffer = (this.speechBuffer ? this.speechBuffer + ' ' : '') + sanitized;
+              this.latestInterim = '';
               if (this.onInterimCallback) {
                 this.onInterimCallback(this.speechBuffer);
               }
-              // 🌟 핵심: 시우가 말을 완전히 끝마칠 때까지 1.9초간 숨 고르고 기다려줌!
               if (this.speechEndTimer) clearTimeout(this.speechEndTimer);
               this.speechEndTimer = setTimeout(() => {
                 this.flushSpeechBuffer();
@@ -196,8 +199,14 @@ class KidSpeechEngine {
       clearTimeout(this.speechEndTimer);
       this.speechEndTimer = null;
     }
-    const fullText = (this.speechBuffer || '').trim();
+    let fullText = (this.speechBuffer || '').trim();
+    if (!fullText && this.latestInterim) {
+      fullText = this.latestInterim.trim();
+    } else if (this.latestInterim && !fullText.includes(this.latestInterim)) {
+      fullText = (fullText + ' ' + this.latestInterim).trim();
+    }
     this.speechBuffer = '';
+    this.latestInterim = '';
     if (fullText.length >= 1 && this.onResultCallback) {
       this.onResultCallback(fullText);
     }

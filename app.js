@@ -751,9 +751,12 @@ class ZoomBrickTalkApp {
     if (this.dom.bigMicBtn) {
       this.dom.bigMicBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        if (this.isRecording) {
-          // 만약 시우가 방금 말을 마쳤고 내용이 있다면 3.2초를 안 기다리고 즉시 제출
-          if (window.kidSpeech && window.kidSpeech.speechBuffer && window.kidSpeech.speechBuffer.trim().length > 0) {
+          // 만약 시우가 방금 말을 마쳤고 내용이 있다면 즉시 제출
+          const hasSpeech = window.kidSpeech && (
+            (window.kidSpeech.speechBuffer && window.kidSpeech.speechBuffer.trim().length > 0) ||
+            (window.kidSpeech.latestInterim && window.kidSpeech.latestInterim.trim().length > 0)
+          );
+          if (hasSpeech) {
             window.kidSpeech.flushSpeechBuffer();
             return;
           }
