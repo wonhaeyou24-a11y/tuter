@@ -136,7 +136,7 @@ const requestHandler = (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       hasEnvKey: Boolean(API_KEY && API_KEY.length > 10),
-      model: 'gemini-3.5-flash-lite'
+      model: 'gemini-3.8-flash'
     }));
     return;
   }
