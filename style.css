@@ -453,16 +453,65 @@ html, body {
   }
 }
 
-/* 🌟 시우가 실제로 말하고 있을 때 (Speaking 임팩트) */
+/* 🌟 시우가 실제로 말하고 있을 때 (Speaking 음성 인식 실시간 임팩트) */
 .student-panel.active-speaking {
-  border-color: #FFD000 !important;
-  box-shadow: 0 0 40px rgba(255, 208, 0, 0.8), inset 0 0 20px rgba(0, 255, 91, 0.3) !important;
-  animation: speakingRipple 0.5s infinite alternate ease-in-out;
+  border-color: #00FF88 !important;
+  box-shadow: 0 0 50px rgba(0, 255, 136, 0.9), inset 0 0 30px rgba(0, 255, 136, 0.4) !important;
+  animation: speakingRipple 0.28s infinite alternate ease-in-out;
 }
 
 @keyframes speakingRipple {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.006); }
+  0% { transform: scale(1); filter: brightness(1); }
+  100% { transform: scale(1.01); filter: brightness(1.08); }
+}
+
+/* 시우 우측 상단 실시간 음성 파형 바 */
+.student-voice-bars {
+  position: absolute;
+  top: 56px;
+  right: 16px;
+  z-index: 10;
+  display: none;
+  align-items: flex-end;
+  gap: 4px;
+  height: 28px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+.student-voice-bars.show { display: flex; }
+.student-voice-bars span {
+  width: 5px;
+  height: 100%;
+  border-radius: 3px;
+  background: #00FF88;
+  transform-origin: bottom;
+  animation: studentVoiceBar 0.35s infinite alternate ease-in-out;
+}
+.student-voice-bars span:nth-child(2) { animation-delay: 0.08s; height: 80%; }
+.student-voice-bars span:nth-child(3) { animation-delay: 0.18s; height: 100%; }
+.student-voice-bars span:nth-child(4) { animation-delay: 0.05s; height: 65%; }
+
+@keyframes studentVoiceBar {
+  0% { transform: scaleY(0.25); background: #10B981; }
+  100% { transform: scaleY(1.2); background: #00FF88; box-shadow: 0 0 8px #00FF88; }
+}
+
+/* 단어가 실시간으로 인식될 때 퐁퐁 튀는 팝핑 단어 효과 */
+.word-pop-highlight {
+  display: inline-block;
+  color: #00FF88;
+  font-weight: 800;
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.8);
+  animation: wordBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes wordBounce {
+  0% { transform: scale(0.85) translateY(4px); opacity: 0.6; }
+  50% { transform: scale(1.25) translateY(-3px); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 /* 시우 상단 중앙 턴 인디케이터 배너 */

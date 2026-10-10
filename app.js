@@ -73,6 +73,7 @@ class ZoomBrickTalkApp {
       restartCallBtn: document.getElementById('restart-call-btn'),
       brickyLiveImg: document.getElementById('bricky-live-img'),
       tutorVoiceBars: document.getElementById('tutor-voice-bars'),
+      studentVoiceBars: document.getElementById('student-voice-bars'),
       aiStatusPill: document.getElementById('ai-status-pill'),
       aiStatusText: document.getElementById('ai-status-text'),
       parentMathView: document.getElementById('parent-math-view'),
@@ -552,16 +553,29 @@ class ZoomBrickTalkApp {
           }
         },
         (interimText) => {
-          // 🌟 실시간 발화 감지 중 (내가 말하고 있다는 즉각적인 화면 반응!)
+          // 🌟 실시간 발화 감지 중 (내가 말하고 있다는 즉각적인 화면 반응 & 단어 팝핑!)
           this.clearSilenceTimer();
           if (this.dom.turnIndicatorBanner) {
             this.dom.turnIndicatorBanner.style.display = 'none'; // 말하기 시작했으므로 차례 배너 접기
           }
           this.dom.studentPanel.classList.add('active-speaking');
+          if (this.dom.studentVoiceBars) {
+            this.dom.studentVoiceBars.classList.add('show');
+          }
           this.dom.studentSpeechPill.style.display = 'flex';
-          this.dom.studentSpokenText.textContent = `🎙️ "${interimText}..."`;
+
+          // 실시간 단어 분할 및 최신 발화 단어 팝핑 하이라이트 효과
+          const words = (interimText || '').trim().split(/\s+/).filter(Boolean);
+          if (words.length > 0) {
+            const lastWord = words.pop();
+            const prevWords = words.join(' ');
+            this.dom.studentSpokenText.innerHTML = `🎙️ "${prevWords ? prevWords + ' ' : ''}<span class="word-pop-highlight">${lastWord}</span>..."`;
+          } else {
+            this.dom.studentSpokenText.textContent = `🎙️ "${interimText}..."`;
+          }
+
           if (this.dom.studentSpokenKr) {
-            this.dom.studentSpokenKr.textContent = `시우가 생각하며 말하는 중이에요... 편하게 말씀하세요 👂`;
+            this.dom.studentSpokenKr.textContent = `시우의 목소리를 귀 기울여 듣고 있어요! 👂`;
           }
         }
       );
@@ -575,6 +589,9 @@ class ZoomBrickTalkApp {
     this.clearSilenceTimer();
     this.setTutorState('idle');
     this.hideYourTurnImpact();
+    if (this.dom.studentVoiceBars) {
+      this.dom.studentVoiceBars.classList.remove('show');
+    }
 
     if (spokenText && spokenText.trim().length > 0) {
       this.handleUserSpeak(spokenText, null, '🎤');
