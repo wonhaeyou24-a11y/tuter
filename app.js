@@ -437,9 +437,16 @@ class ZoomBrickTalkApp {
       this.dom.studentPanel.classList.remove('active-speaking');
     }, 2500);
 
-    // 2. 유의미한 발화일 때만 칭찬 및 브릭 스타 지급
+    // 2. 유의미한 발화일 때만 NotebookLM 교수법 기반 노력/행동 중심 칭찬 및 브릭 스타 지급
     if (!isUnclear) {
-      this.showPraise(`Great Job Siwoo! "${finalEn}" ⭐+1`);
+      const effortPraises = [
+        `Awesome effort, Siwoo! "${finalEn}" ⭐+1`,
+        `Super clear voice, Siwoo! "${finalEn}" ⭐+1`,
+        `Proud of your try! "${finalEn}" ⭐+1`,
+        `Great English speaking, Siwoo! "${finalEn}" ⭐+1`
+      ];
+      const picked = effortPraises[Math.floor(Math.random() * effortPraises.length)];
+      this.showPraise(picked);
       this.addStar(1);
     }
 

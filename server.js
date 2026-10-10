@@ -48,7 +48,7 @@ function callGemini(sysPrompt, userPrompt) {
     const req = https.request({
       hostname: 'generativelanguage.googleapis.com',
       port: 443,
-      path: '/v1beta/models/gemini-3.5-flash-lite:generateContent',
+      path: '/v1beta/models/gemini-1.5-flash:generateContent',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
