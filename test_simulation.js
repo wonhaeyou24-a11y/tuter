@@ -1,36 +1,34 @@
 const { BrickyDialogueEngine } = require('./dialogue.js');
 
-const engine = new BrickyDialogueEngine();
-
-console.log("=== 🧱 브릭키 & 7세 시우 1:1 대화 멀티턴 시뮬레이션 테스트 ===\n");
+console.log("=== 🧱 [Acknowledge-Expand-Ping] 사람 같은 완전 문장 대화 시뮬레이션 ===\n");
 
 const scenarios = [
   {
-    name: "시나리오 1: 점심 식사 & 피자 토핑 티키타카",
+    name: "시나리오 1: 점심 식사 & 피자 티키타카 (완전한 문장 확장)",
     turns: [
       "I ate yummy pizza for lunch!",
-      "Lots of extra cheese!",
+      "I ate two big slices!",
       "What is your favorite food, Bricky?"
     ]
   },
   {
-    name: "시나리오 2: 놀이터 & 친구와 미끄럼틀 타기",
+    name: "시나리오 2: 놀이터 & 미끄럼틀 경험 (감정 공감 & 완전한 문장)",
     turns: [
       "I played at the playground!",
-      "I went on the big yellow slide!",
+      "I rode the big slide!",
       "Do you want to know more, Bricky?"
     ]
   },
   {
-    name: "시나리오 3: 레고 블록 만들기 & 협동 조립",
+    name: "시나리오 3: 레고 만들기 & 협동 조립 (역할놀이 완전 문장)",
     turns: [
-      "I love building Legos!",
-      "A giant space rocket!",
+      "I want to build Legos!",
+      "Let's build a giant space rocket!",
       "Can you help me build it, Bricky?"
     ]
   },
   {
-    name: "시나리오 4: 엉뚱한 말 / 망설임 / 짧은 단답",
+    name: "시나리오 4: 엉뚱한 말 / 망설임 / 정체 질문",
     turns: [
       "uh... um...",
       "Yes, I like that!",
@@ -44,7 +42,6 @@ for (const scenario of scenarios) {
   console.log(`🎬 [${scenario.name}]`);
   console.log(`--------------------------------------------------`);
   
-  // 시나리오마다 새 대화 세션
   const simEngine = new BrickyDialogueEngine();
   
   for (let i = 0; i < scenario.turns.length; i++) {
@@ -54,7 +51,7 @@ for (const scenario of scenarios) {
     const response = simEngine.generateContextualResponse(userUtterance);
     console.log(`🤖 브릭키: "${response.replyEn}"`);
     console.log(`   (한글): "${response.replyKr}"`);
-    console.log(`   👉 추천 선택지(Suggestions):`);
+    console.log(`   👉 추천 완전 문장 카드(Sentence Frame Suggestions):`);
     if (response.suggestions && response.suggestions.length > 0) {
       response.suggestions.forEach((s, idx) => {
         console.log(`      ${idx + 1}. [${s.emoji}] ${s.en} (${s.kr})`);
