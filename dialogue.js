@@ -358,87 +358,111 @@ class BrickyDialogueEngine {
    * 시우(Kai)의 음성을 영어와 한국어 번역 쌍으로 스마트 정규화
    * (STT에서 영어로 잡히든, 한국어 음차로 잡히든 완벽한 바이링구얼 자막 생성)
    */
+  /**
+   * 시우의 음성을 영어와 한국어 번역 쌍으로 스마트 정규화
+   * 🌟 [핵심 개선]: 사용자가 온전한 문장이나 질문을 말했을 때는 사용자의 원문을 100% 그대로 보존!
+   * (절대로 'hi' 한 단어 포함되었다고 'Hello Bricky!'로 덮어쓰지 않음)
+   */
   normalizeKidSpeech(rawText) {
     if (this.isUnclearSpeech(rawText)) {
       return { en: (rawText || '...').trim(), kr: '잘 못 들었어요. 다시 말해줄래요? 👂', isUnclear: true };
     }
-    const t = rawText.trim().toLowerCase();
+    const cleanRaw = (rawText || '').trim();
+    const t = cleanRaw.toLowerCase();
+    const words = t.split(/\s+/).filter(Boolean);
 
-    // 1. 인사
-    if (t.includes('hello') || t.includes('hi') || t.includes('안녕') || t.includes('헬로') || t.includes('하이')) {
+    // 🌟 1. 이미 2단어 이상의 영문 문장이거나 질문인 경우: 사용자의 실제 발화 100% 원형 보존!
+    const isMultiWordOrQuestion = words.length >= 2 || t.includes('?') || t.startsWith('what') || t.startsWith('how') || t.startsWith('who') || t.startsWith('why') || t.startsWith('where') || t.startsWith('can') || t.startsWith('do');
+    const isEnglishSpoken = /^[a-zA-Z0-9\s.,!?'"~-]+$/.test(cleanRaw);
+
+    if (isMultiWordOrQuestion && isEnglishSpoken) {
+      return { en: cleanRaw, kr: this.quickTranslateToKr(cleanRaw) };
+    }
+
+    // 🌟 2. 단독 1단어 파편 발화일 때만 7세 아동을 위한 완전 문장 모델링 지원
+    // 인사 단독 발화
+    if (t === 'hello' || t === 'hi' || t === '안녕' || t === '헬로' || t === '하이' || t === '안녕 브릭키') {
       return { en: "Hello Bricky!", kr: "안녕 브릭키야!" };
     }
-    // 2. 피자 / 음식
-    if (t.includes('pizza') || t.includes('피자')) {
+    // 피자 / 음식 단독 발화
+    if (t === 'pizza' || t === '피자') {
       return { en: "I love pizza!", kr: "피자를 정말 좋아해요!" };
     }
-    if (t.includes('apple') || t.includes('사과') || t.includes('애플')) {
+    if (t === 'apple' || t === '사과') {
       return { en: "Here is a sweet apple!", kr: "달콤한 사과를 줄게요!" };
     }
-    if (t.includes('hungry') || t.includes('배고') || t.includes('헝그리')) {
+    if (t === 'hungry' || t === '배고파') {
       return { en: "I am hungry!", kr: "배가 고파요!" };
     }
-    // 3. 레고 / 장난감
-    if (t.includes('lego') || t.includes('레고') || t.includes('블록') || t.includes('brick')) {
+    // 레고 / 장난감 단독 발화
+    if (t === 'lego' || t === '레고' || t === '블록' || t === 'brick') {
       return { en: "I love Lego bricks!", kr: "레고 블록 만드는 게 제일 좋아요!" };
     }
-    if (t.includes('car') || t.includes('자동차') || t.includes('카')) {
+    if (t === 'car' || t === '자동차') {
       return { en: "Let's build a race car!", kr: "멋진 레이싱카를 만들어요!" };
     }
-    // 4. 공룡
-    if (t.includes('dinosaur') || t.includes('공룡') || t.includes('티라노') || t.includes('다이노')) {
+    // 공룡 / 동물 단독 발화
+    if (t === 'dinosaur' || t === '공룡') {
       return { en: "I like big dinosaurs!", kr: "커다란 공룡이 좋아요!" };
     }
-    // 5. 동물
-    if (t.includes('lion') || t.includes('사자') || t.includes('라이언')) {
+    if (t === 'lion' || t === '사자') {
       return { en: "Look at the roaring lion!", kr: "어흥 사자가 멋져요!" };
     }
-    if (t.includes('dog') || t.includes('puppy') || t.includes('강아지') || t.includes('개')) {
+    if (t === 'dog' || t === 'puppy' || t === '강아지') {
       return { en: "I love cute puppies!", kr: "귀여운 강아지가 좋아요!" };
     }
-    // 6. 긍정 / 확인
-    if (t.includes('yes') || t.includes('yeah') || t.includes('예스') || t.includes('응') || t.includes('네') || t.includes('좋아')) {
+    // 긍정 / 확인 단독 발화
+    if (t === 'yes' || t === 'yeah' || t === '응' || t === '네' || t === '좋아') {
       return { en: "Yes, I like that!", kr: "네, 아주 좋아요!" };
     }
-    if (t.includes('no') || t.includes('노') || t.includes('아니')) {
+    if (t === 'no' || t === '아니' || t === '싫어') {
       return { en: "No, maybe later!", kr: "아니요, 다음에요!" };
     }
-    // 7. 고마워 / 하이파이브
-    if (t.includes('thank') || t.includes('고마') || t.includes('땡큐')) {
+    // 고마워 / 하이파이브
+    if (t === 'thank you' || t === 'thanks' || t === '고마워') {
       return { en: "Thank you, Bricky!", kr: "브릭키야 고마워!" };
     }
-    if (t.includes('high five') || t.includes('하이파이브')) {
+    if (t === 'high five' || t === '하이파이브') {
       return { en: "High five, Bricky!", kr: "브릭키 하이파이브!" };
     }
-    // 8. 놀이터
-    if (t.includes('playground') || t.includes('놀이터') || t.includes('플레이그라운드')) {
+    // 놀이터
+    if (t === 'playground' || t === '놀이터') {
       return { en: "I played at the playground!", kr: "놀이터에서 신나게 놀았어요!" };
     }
-    // 9. 색깔 (Red, Blue, Yellow)
-    if (t.includes('red') || t.includes('빨간') || t.includes('레드')) {
-      return { en: "I like red!", kr: "빨간색이 좋아요!" };
+    if (t === 'slide' || t === '미끄럼틀') {
+      return { en: "I rode the big slide!", kr: "커다란 미끄럼틀을 탔어요!" };
     }
-    if (t.includes('blue') || t.includes('파란') || t.includes('블루')) {
-      return { en: "I like blue!", kr: "파란색이 좋아요!" };
-    }
-    if (t.includes('yellow') || t.includes('노란') || t.includes('옐로우')) {
-      return { en: "I like yellow!", kr: "노란색이 좋아요!" };
-    }
-    // 10. 기분 (Happy, Good, Fun)
-    if (t.includes('happy') || t.includes('행복') || t.includes('해피') || t.includes('신나')) {
-      return { en: "I am super happy!", kr: "기분이 아주 신나요!" };
-    }
-    if (t.includes('good') || t.includes('굿') || t.includes('좋아')) {
-      return { en: "I feel good!", kr: "기분이 좋아요!" };
-    }
+    // 색깔
+    if (t === 'red' || t === '빨간색') return { en: "I like red bricks!", kr: "빨간색 블록이 좋아요!" };
+    if (t === 'blue' || t === '파란색') return { en: "I like blue bricks!", kr: "파란색 블록이 좋아요!" };
+    if (t === 'yellow' || t === '노란색') return { en: "I like yellow bricks!", kr: "노란색 블록이 좋아요!" };
 
-    // 기본: 영문 입력이면 그 자체를 두고 적절한 한국어 캡션 매핑
-    const isEnglishOnly = /^[a-zA-Z0-9\s.,!?'"~-]+$/.test(rawText);
-    if (isEnglishOnly) {
-      return { en: rawText, kr: `"${rawText}" 라고 말했어요!` };
-    } else {
-      return { en: `"${rawText}"`, kr: `시우가 "${rawText}" 라고 말했어요!` };
-    }
+    // 기본: 입력된 영문 원문 그대로 보존
+    return {
+      en: cleanRaw,
+      kr: isEnglishSpoken ? this.quickTranslateToKr(cleanRaw) : `시우가 "${cleanRaw}" 라고 말했어요!`
+    };
+  }
+
+  /**
+   * 🌟 시우의 일상 영어 발화를 자연스러운 7세 한국어로 스마트 번역 매핑
+   */
+  quickTranslateToKr(enText) {
+    const t = (enText || '').toLowerCase().trim();
+    if (t.includes('favorite food')) return "브릭키가 제일 좋아하는 음식은 뭐야?";
+    if (t.includes('how old')) return "브릭키는 몇 살이야?";
+    if (t.includes('who are you')) return "브릭키 너는 누구야?";
+    if (t.includes('help me')) return "브릭키 나 만드는 거 도와줄래?";
+    if (t.includes('what are you doing')) return "브릭키 지금 뭐 하고 있어?";
+    if (t.includes('how about you') || t.includes('what about you')) return "브릭키 너는 어때?";
+    if (t.includes('do you like')) return "브릭키도 이거 좋아해?";
+    if (t.includes('i ate') || t.includes('for lunch')) return "나 맛있는 점심 먹었어!";
+    if (t.includes('pizza')) return "나 피자 좋아해!";
+    if (t.includes('slide')) return "나 미끄럼틀 탔어!";
+    if (t.includes('playground')) return "나 놀이터에서 놀았어!";
+    if (t.includes('rocket') || t.includes('space')) return "우리 멋진 우주 로켓 만들자!";
+    if (t.includes('lego') || t.includes('build')) return "우리 재미있는 레고 만들자!";
+    return `"${enText}" 라고 말했어요! ✨`;
   }
 
   /**

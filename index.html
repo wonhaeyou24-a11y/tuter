@@ -38,6 +38,16 @@
       </div>
 
       <div class="header-right">
+        <!-- 🌟 1:1 대화 모드 스위처 (느긋한 핑퐁 대화 vs 실시간 자동) -->
+        <div class="mode-switcher-pill" id="mode-switcher-pill" title="대화 방식 선택">
+          <button class="mode-btn active" id="mode-pingpong-btn" title="내가 편하게 말하고 [대화 보내기]를 눌러 핑퐁 대화">
+            <span>💬 1:1 핑퐁 대화</span>
+          </button>
+          <button class="mode-btn" id="mode-realtime-btn" title="말을 멈추면 자동으로 브릭키가 대답">
+            <span>⚡ 실시간 자동</span>
+          </button>
+        </div>
+
         <button class="lang-toggle-pill" id="stt-lang-btn" title="음성 인식 언어 변경 (영어 / 한국어)">
           <span id="stt-lang-flag">🇺🇸</span>
           <span id="stt-lang-label">영어 인식 (English)</span>
@@ -110,6 +120,30 @@
             </div>
             <p class="fallback-title">시우의 화상 카메라</p>
             <button class="cam-start-btn" id="cam-start-btn">📷 카메라 켜기</button>
+          </div>
+
+          <!-- 🌟 1:1 핑퐁 대화 모드 전용: 내 화상화면 가운데 크게 나오는 대화 작성 & 대화보내기 센터 -->
+          <div class="pingpong-control-center active" id="pingpong-control-center">
+            <div class="pingpong-speech-card" id="pingpong-speech-card">
+              <div class="pingpong-badge">
+                <span class="pingpong-badge-dot"></span>
+                <span id="pingpong-badge-text">👦 시우가 하고 있는 말 (말씀하시면 여기에 작성돼요)</span>
+              </div>
+              <div class="pingpong-en-text" id="pingpong-en-text">"말씀하시거나 아래 추천 문장을 눌러보세요! 🎤"</div>
+              <div class="pingpong-kr-text" id="pingpong-kr-text">"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"</div>
+            </div>
+
+            <!-- 중앙: 아이가 쉽게 누를 수 있는 큼직한 원터치 전송 & 재시도 버튼 그룹 -->
+            <div class="pingpong-action-buttons">
+              <button class="pingpong-send-btn disabled" id="pingpong-send-btn">
+                <span class="btn-icon">🚀</span>
+                <span class="btn-label">브릭키에게 대화 보내기</span>
+                <span class="btn-sub">누르면 브릭키가 대답하고 질문해요!</span>
+              </button>
+              <button class="pingpong-retry-btn" id="pingpong-retry-btn" title="지우고 다시 말하기">
+                <span>🔄 다시 말하기</span>
+              </button>
+            </div>
           </div>
 
           <!-- 🌟 시우 발화 턴 비주얼 임팩트 배너 (내가 말해야 할 타이밍에 나타남) -->

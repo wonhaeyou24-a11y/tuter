@@ -84,8 +84,21 @@ class ZoomBrickTalkApp {
       aiSettingsSave: document.getElementById('ai-settings-save'),
       sttLangBtn: document.getElementById('stt-lang-btn'),
       sttLangFlag: document.getElementById('stt-lang-flag'),
-      sttLangLabel: document.getElementById('stt-lang-label')
+      sttLangLabel: document.getElementById('stt-lang-label'),
+      modePingpongBtn: document.getElementById('mode-pingpong-btn'),
+      modeRealtimeBtn: document.getElementById('mode-realtime-btn'),
+      pingpongControlCenter: document.getElementById('pingpong-control-center'),
+      pingpongSpeechCard: document.getElementById('pingpong-speech-card'),
+      pingpongBadgeText: document.getElementById('pingpong-badge-text'),
+      pingpongEnText: document.getElementById('pingpong-en-text'),
+      pingpongKrText: document.getElementById('pingpong-kr-text'),
+      pingpongSendBtn: document.getElementById('pingpong-send-btn'),
+      pingpongRetryBtn: document.getElementById('pingpong-retry-btn')
     };
+
+    // 🌟 1:1 대화 모드 ('pingpong' | 'realtime', 기본값: 사용자가 원한 핑퐁 모드)
+    this.dialogueMode = localStorage.getItem('bricktalk_dialogue_mode') || 'pingpong';
+    this.currentPendingText = '';
 
     // 실시간 립싱크 스위칭 타이머
     this.lipSyncTimer = null;
@@ -96,6 +109,7 @@ class ZoomBrickTalkApp {
    */
   async init() {
     try {
+      this.updateDialogueModeUI();
       // 🔒 AES-256-GCM 암호화 체크포인트 복원
       if (window.secureStorage) {
         const savedData = await window.secureStorage.getDecryptedItem('bricky_kai_zoom_progress');
@@ -123,6 +137,28 @@ class ZoomBrickTalkApp {
       }, 700);
     } catch (e) {
       console.error('[화상통화 앱 초기화 예외 방지]:', e);
+    }
+  }
+
+  /**
+   * 🌟 1:1 대화 모드 변경 ('pingpong' | 'realtime')
+   */
+  setDialogueMode(mode) {
+    this.dialogueMode = mode;
+    try { localStorage.setItem('bricktalk_dialogue_mode', mode); } catch (e) {}
+    this.updateDialogueModeUI();
+  }
+
+  /**
+   * 모드 변경에 따른 UI 토글
+   */
+  updateDialogueModeUI() {
+    const isPingPong = this.dialogueMode === 'pingpong';
+    if (this.dom.modePingpongBtn) this.dom.modePingpongBtn.classList.toggle('active', isPingPong);
+    if (this.dom.modeRealtimeBtn) this.dom.modeRealtimeBtn.classList.toggle('active', !isPingPong);
+    if (this.dom.pingpongControlCenter) this.dom.pingpongControlCenter.classList.toggle('active', isPingPong);
+    if (this.dom.micGuideText) {
+      this.dom.micGuideText.textContent = isPingPong ? "1:1 핑퐁 모드 💬" : "실시간 자동 ⚡";
     }
   }
 
@@ -304,6 +340,15 @@ class ZoomBrickTalkApp {
       `;
       card.addEventListener('click', () => {
         this.clearSilenceTimer();
+        if (this.dom.pingpongEnText) {
+          this.dom.pingpongEnText.textContent = `"${choice.en}"`;
+        }
+        if (this.dom.pingpongKrText) {
+          this.dom.pingpongKrText.textContent = `"${choice.kr}"`;
+        }
+        if (this.dom.pingpongSendBtn) {
+          this.dom.pingpongSendBtn.classList.add('disabled');
+        }
         this.handleUserSpeak(choice.en, choice.kr, choice.emoji);
       });
       this.dom.cardsGrid.appendChild(card);
@@ -528,6 +573,19 @@ class ZoomBrickTalkApp {
       setTimeout(() => {
         if (!this.isTutorSpeaking) {
           this.showYourTurnImpact();
+          if (this.dom.pingpongBadgeText) {
+            this.dom.pingpongBadgeText.textContent = "👦 시우 차례예요! (말씀하시면 여기에 작성돼요)";
+          }
+          if (this.dom.pingpongEnText) {
+            this.dom.pingpongEnText.textContent = '"말씀하시거나 아래 추천 문장을 눌러보세요! 🎤"';
+          }
+          if (this.dom.pingpongKrText) {
+            this.dom.pingpongKrText.textContent = '"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"';
+          }
+          if (this.dom.pingpongSendBtn) {
+            this.dom.pingpongSendBtn.classList.add('disabled');
+          }
+          this.currentPendingText = '';
           this.triggerMicAutoStart();
         }
       }, 500);
@@ -588,6 +646,21 @@ class ZoomBrickTalkApp {
           if (this.dom.studentSpokenKr) {
             this.dom.studentSpokenKr.textContent = `시우의 목소리를 귀 기울여 듣고 있어요! 👂`;
           }
+
+          // 🌟 1:1 핑퐁 대화 모드 연동: 내 화상화면 가운데 카드에 실시간 작성!
+          this.currentPendingText = interimText;
+          if (this.dom.pingpongEnText) {
+            this.dom.pingpongEnText.textContent = `"${interimText}..."`;
+          }
+          if (this.dom.pingpongKrText) {
+            this.dom.pingpongKrText.textContent = this.dialogueEngine.quickTranslateToKr(interimText);
+          }
+          if (this.dom.pingpongBadgeText) {
+            this.dom.pingpongBadgeText.textContent = "🎙️ 실시간으로 듣고 있어요! 말이 끝나면 아래 전송을 눌러주세요!";
+          }
+          if (this.dom.pingpongSendBtn) {
+            this.dom.pingpongSendBtn.classList.remove('disabled');
+          }
         }
       );
     }
@@ -605,10 +678,33 @@ class ZoomBrickTalkApp {
     }
 
     if (spokenText && spokenText.trim().length > 0) {
-      this.handleUserSpeak(spokenText, null, '🎤');
+      const cleanText = spokenText.trim();
+      this.currentPendingText = cleanText;
+
+      // 🌟 핑퐁 대화 센터 카드 업데이트
+      if (this.dom.pingpongEnText) {
+        this.dom.pingpongEnText.textContent = `"${cleanText}"`;
+      }
+      if (this.dom.pingpongKrText) {
+        this.dom.pingpongKrText.textContent = this.dialogueEngine.quickTranslateToKr(cleanText);
+      }
+      if (this.dom.pingpongBadgeText) {
+        this.dom.pingpongBadgeText.textContent = "✨ 말씀이 끝났어요! 아래 [대화 보내기]를 눌러주세요!";
+      }
+      if (this.dom.pingpongSendBtn) {
+        this.dom.pingpongSendBtn.classList.remove('disabled');
+      }
+
+      // 🌟 [핵심 모드 분기]:
+      // 1:1 핑퐁 모드: 자동으로 브릭키에게 넘어가지 않고, 아이가 가운데 [대화 보내기 🚀] 버튼을 누를 때까지 편안하게 대기!
+      // 실시간 자동 모드: 말을 멈추면 2.6초 후 즉시 자동 전송!
+      if (this.dialogueMode === 'realtime') {
+        this.handleUserSpeak(cleanText, null, '🎤');
+      }
     } else {
-      // 🌟 음성이 제대로 잡히지 않았을 때: 엉뚱한 진도로 건너뛰거나 멈추지 않고, 다정하게 다시 말해달라고 요청!
-      this.handleInaudibleSpeech();
+      if (this.dialogueMode === 'realtime') {
+        this.handleInaudibleSpeech();
+      }
     }
   }
 
@@ -714,6 +810,51 @@ class ZoomBrickTalkApp {
    * 이벤트 바인딩
    */
   bindEvents() {
+    // 🌟 모드 전환 버튼 이벤트
+    if (this.dom.modePingpongBtn) {
+      this.dom.modePingpongBtn.addEventListener('click', () => {
+        if (window.kidSounds) window.kidSounds.playPop();
+        this.setDialogueMode('pingpong');
+      });
+    }
+
+    if (this.dom.modeRealtimeBtn) {
+      this.dom.modeRealtimeBtn.addEventListener('click', () => {
+        if (window.kidSounds) window.kidSounds.playPop();
+        this.setDialogueMode('realtime');
+      });
+    }
+
+    // 🌟 1:1 핑퐁 대화 모드 전용 대형 전송 버튼 클릭
+    if (this.dom.pingpongSendBtn) {
+      this.dom.pingpongSendBtn.addEventListener('click', () => {
+        const text = (this.currentPendingText || '').trim();
+        if (!text) return;
+        if (window.kidSounds) window.kidSounds.playStarSparkle();
+        this.currentPendingText = '';
+        this.dom.pingpongSendBtn.classList.add('disabled');
+        if (this.dom.pingpongEnText) this.dom.pingpongEnText.textContent = `브릭키에게 전송 중... 🚀 "${text}"`;
+        if (this.dom.pingpongBadgeText) this.dom.pingpongBadgeText.textContent = "👂 브릭키가 시우의 말을 듣고 있어요!";
+        this.handleUserSpeak(text, null, '🚀');
+      });
+    }
+
+    // 🌟 지우고 다시 말하기 버튼
+    if (this.dom.pingpongRetryBtn) {
+      this.dom.pingpongRetryBtn.addEventListener('click', () => {
+        if (window.kidSounds) window.kidSounds.playPop();
+        this.currentPendingText = '';
+        if (this.dom.pingpongEnText) this.dom.pingpongEnText.textContent = '"말씀하시거나 아래 추천 문장을 눌러보세요! 🎤"';
+        if (this.dom.pingpongKrText) this.dom.pingpongKrText.textContent = '"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"';
+        if (this.dom.pingpongBadgeText) this.dom.pingpongBadgeText.textContent = "👦 시우가 하고 있는 말 (말씀하시면 여기에 작성돼요)";
+        if (this.dom.pingpongSendBtn) this.dom.pingpongSendBtn.classList.add('disabled');
+        if (window.kidSpeech) {
+          window.kidSpeech.speechBuffer = '';
+          window.kidSpeech.latestInterim = '';
+        }
+      });
+    }
+
     if (this.dom.toggleCamBtn) {
       this.dom.toggleCamBtn.addEventListener('click', () => this.toggleWebcam());
     }
