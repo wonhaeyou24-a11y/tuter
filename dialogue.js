@@ -657,10 +657,34 @@ class BrickyDialogueEngine {
     }
 
     // 🌟 6. 시우의 자유 발화에 자연스럽게 호응하고 문장 모델링
+    const hasKr = /[가-힣]/.test(rawText);
+    if (hasKr) {
+      if (this.ageGroup === 'adult') {
+        return {
+          replyEn: `Thank you for sharing, ${studentEn}! 🌿 That is so interesting. How do you feel about that?`,
+          replyKr: `말씀해 주셔서 감사해요, ${studentKr}님! 🌿 참 흥미로운 이야기네요. 그 부분에 대해 어떻게 생각하세요?`,
+          suggestions: [
+            { emoji: "☕", en: "I think it is very important.", phonetic: "[아이 씽크 잇 이즈 베리 임포턴트]", kr: "그게 참 중요하다고 생각해요." },
+            { emoji: "✨", en: "I really enjoyed it today.", phonetic: "[아이 리얼리 엔조이드 잇 투데이]", kr: "오늘 정말 즐거운 시간이었어요." },
+            { emoji: "❓", en: "What is your opinion, Bricky?", phonetic: "[왓 이즈 유어 어피니언, 브릭키]", kr: "브릭키 의견은 어때요?" }
+          ]
+        };
+      }
+      return {
+        replyEn: `That's wonderful, ${studentEn}! 🎶 I love listening to you! What should we do next?`,
+        replyKr: `그렇구나, ${studentKr}야! 🎶 이야기 들려줘서 고마워! 우리 다음엔 뭐 하고 놀까?`,
+        suggestions: [
+          { emoji: "😄", en: "Let's play together, Bricky!", phonetic: "[렛츠 플레이 투게더, 브릭키]", kr: "브릭키야 우리 같이 놀자!" },
+          { emoji: "🧱", en: "Let's build with Lego toys!", phonetic: "[렛츠 빌드 위드 레고 토이즈]", kr: "레고 장난감으로 만들자!" },
+          { emoji: "❓", en: "What do you want to play, Bricky?", phonetic: "[왓 두 유 원 투 플레이, 브릭키]", kr: "브릭키는 뭐 하고 놀고 싶어?" }
+        ]
+      };
+    }
+
     const norm = this.normalizeKidSpeech(rawText);
     return {
-      replyEn: `That sounds so cool! "${norm.en}"! ⭐ Tell me more, Siwoo!`,
-      replyKr: `진짜 멋지다! "${norm.kr}" 라니! ⭐ 시우야, 조금만 더 들려줘!`,
+      replyEn: `That sounds so cool! "${norm.en}"! ⭐ Tell me more, ${studentEn}!`,
+      replyKr: `진짜 멋지다! "${norm.kr}" 라니! ⭐ ${studentKr}야, 조금만 더 들려줘!`,
       suggestions: [
         { emoji: "😄", en: "It was super fun!", phonetic: "[잇 워즈 슈퍼 펀]", kr: "엄청 재미있었어요!" },
         { emoji: "💖", en: "I loved it so much!", phonetic: "[아이 러브드 잇 쏘 머치]", kr: "정말 정말 좋았어요!" },
@@ -685,77 +709,110 @@ class BrickyDialogueEngine {
     const cleanRaw = (rawText || '').trim();
     const t = cleanRaw.toLowerCase();
     const words = t.split(/\s+/).filter(Boolean);
+    const hasKorean = /[가-힣]/.test(cleanRaw);
 
-    // 🌟 1. 이미 2단어 이상의 영문 문장이거나 질문인 경우: 사용자의 실제 발화 100% 원형 보존!
+    // 🌟 1. 한국어 발화일 때: 사용자의 한국어 원문을 100% 온전히 보존하여 자막과 대화 엔진에 전달!
+    if (hasKorean) {
+      // 1단어 단독 한국어 발화일 때 완전한 문장 페어링 제공
+      if (t === '안녕' || t === '안녕 브릭키' || t === '안녕하세요') {
+        return { en: cleanRaw, kr: '안녕 브릭키야! 👋', isKorean: true };
+      }
+      if (t === '피자') {
+        return { en: cleanRaw, kr: '피자를 정말 좋아해요! 🍕', isKorean: true };
+      }
+      if (t === '사과') {
+        return { en: cleanRaw, kr: '달콤한 사과를 줄게요! 🍎', isKorean: true };
+      }
+      if (t === '배고파') {
+        return { en: cleanRaw, kr: '배가 고파요! 🍽️', isKorean: true };
+      }
+      if (t === '레고' || t === '블록') {
+        return { en: cleanRaw, kr: '레고 블록 놀이가 제일 좋아요! 🧱', isKorean: true };
+      }
+      if (t === '공룡') {
+        return { en: cleanRaw, kr: '커다란 공룡이 좋아요! 🦖', isKorean: true };
+      }
+      if (t === '강아지') {
+        return { en: cleanRaw, kr: '귀여운 강아지가 좋아요! 🐶', isKorean: true };
+      }
+      if (t === '고마워' || t === '감사합니다') {
+        return { en: cleanRaw, kr: '브릭키야 고마워! 💖', isKorean: true };
+      }
+      if (t === '하이파이브') {
+        return { en: cleanRaw, kr: '브릭키 하이파이브! 👏', isKorean: true };
+      }
+
+      // 일반 한국어 문장/질문
+      return {
+        en: cleanRaw,
+        kr: `"${cleanRaw}" 🇰🇷`,
+        isKorean: true
+      };
+    }
+
+    // 🌟 2. 2단어 이상의 영문 문장이거나 질문인 경우: 사용자의 실제 발화 100% 원형 보존!
     const isMultiWordOrQuestion = words.length >= 2 || t.includes('?') || t.startsWith('what') || t.startsWith('how') || t.startsWith('who') || t.startsWith('why') || t.startsWith('where') || t.startsWith('can') || t.startsWith('do');
     const isEnglishSpoken = /^[a-zA-Z0-9\s.,!?'"~-]+$/.test(cleanRaw);
 
     if (isMultiWordOrQuestion && isEnglishSpoken) {
-      return { en: cleanRaw, kr: this.quickTranslateToKr(cleanRaw) };
+      return { en: cleanRaw, kr: this.quickTranslateToKr(cleanRaw), isKorean: false };
     }
 
-    // 🌟 2. 단독 1단어 파편 발화일 때만 7세 아동을 위한 완전 문장 모델링 지원
-    // 인사 단독 발화
-    if (t === 'hello' || t === 'hi' || t === '안녕' || t === '헬로' || t === '하이' || t === '안녕 브릭키') {
-      return { en: "Hello Bricky!", kr: "안녕 브릭키야!" };
+    // 🌟 3. 단독 1단어 파편 발화일 때만 7세 아동을 위한 완전 문장 모델링 지원
+    if (t === 'hello' || t === 'hi') {
+      return { en: "Hello Bricky!", kr: "안녕 브릭키야!", isKorean: false };
     }
-    // 피자 / 음식 단독 발화
-    if (t === 'pizza' || t === '피자') {
-      return { en: "I love pizza!", kr: "피자를 정말 좋아해요!" };
+    if (t === 'pizza') {
+      return { en: "I love pizza!", kr: "피자를 정말 좋아해요!", isKorean: false };
     }
-    if (t === 'apple' || t === '사과') {
-      return { en: "Here is a sweet apple!", kr: "달콤한 사과를 줄게요!" };
+    if (t === 'apple') {
+      return { en: "Here is a sweet apple!", kr: "달콤한 사과를 줄게요!", isKorean: false };
     }
-    if (t === 'hungry' || t === '배고파') {
-      return { en: "I am hungry!", kr: "배가 고파요!" };
+    if (t === 'hungry') {
+      return { en: "I am hungry!", kr: "배가 고파요!", isKorean: false };
     }
-    // 레고 / 장난감 단독 발화
-    if (t === 'lego' || t === '레고' || t === '블록' || t === 'brick') {
-      return { en: "I love Lego bricks!", kr: "레고 블록 만드는 게 제일 좋아요!" };
+    if (t === 'lego' || t === 'brick') {
+      return { en: "I love Lego bricks!", kr: "레고 블록 만드는 게 제일 좋아요!", isKorean: false };
     }
-    if (t === 'car' || t === '자동차') {
-      return { en: "Let's build a race car!", kr: "멋진 레이싱카를 만들어요!" };
+    if (t === 'car') {
+      return { en: "Let's build a race car!", kr: "멋진 레이싱카를 만들어요!", isKorean: false };
     }
-    // 공룡 / 동물 단독 발화
-    if (t === 'dinosaur' || t === '공룡') {
-      return { en: "I like big dinosaurs!", kr: "커다란 공룡이 좋아요!" };
+    if (t === 'dinosaur') {
+      return { en: "I like big dinosaurs!", kr: "커다란 공룡이 좋아요!", isKorean: false };
     }
-    if (t === 'lion' || t === '사자') {
-      return { en: "Look at the roaring lion!", kr: "어흥 사자가 멋져요!" };
+    if (t === 'lion') {
+      return { en: "Look at the roaring lion!", kr: "어흥 사자가 멋져요!", isKorean: false };
     }
-    if (t === 'dog' || t === 'puppy' || t === '강아지') {
-      return { en: "I love cute puppies!", kr: "귀여운 강아지가 좋아요!" };
+    if (t === 'dog' || t === 'puppy') {
+      return { en: "I love cute puppies!", kr: "귀여운 강아지가 좋아요!", isKorean: false };
     }
-    // 긍정 / 확인 단독 발화
-    if (t === 'yes' || t === 'yeah' || t === '응' || t === '네' || t === '좋아') {
-      return { en: "Yes, I like that!", kr: "네, 아주 좋아요!" };
+    if (t === 'yes' || t === 'yeah') {
+      return { en: "Yes, I like that!", kr: "네, 아주 좋아요!", isKorean: false };
     }
-    if (t === 'no' || t === '아니' || t === '싫어') {
-      return { en: "No, maybe later!", kr: "아니요, 다음에요!" };
+    if (t === 'no') {
+      return { en: "No, maybe later!", kr: "아니요, 다음에요!", isKorean: false };
     }
-    // 고마워 / 하이파이브
-    if (t === 'thank you' || t === 'thanks' || t === '고마워') {
-      return { en: "Thank you, Bricky!", kr: "브릭키야 고마워!" };
+    if (t === 'thank you' || t === 'thanks') {
+      return { en: "Thank you, Bricky!", kr: "브릭키야 고마워!", isKorean: false };
     }
-    if (t === 'high five' || t === '하이파이브') {
-      return { en: "High five, Bricky!", kr: "브릭키 하이파이브!" };
+    if (t === 'high five') {
+      return { en: "High five, Bricky!", kr: "브릭키 하이파이브!", isKorean: false };
     }
-    // 놀이터
-    if (t === 'playground' || t === '놀이터') {
-      return { en: "I played at the playground!", kr: "놀이터에서 신나게 놀았어요!" };
+    if (t === 'playground') {
+      return { en: "I played at the playground!", kr: "놀이터에서 신나게 놀았어요!", isKorean: false };
     }
-    if (t === 'slide' || t === '미끄럼틀') {
-      return { en: "I rode the big slide!", kr: "커다란 미끄럼틀을 탔어요!" };
+    if (t === 'slide') {
+      return { en: "I rode the big slide!", kr: "커다란 미끄럼틀을 탔어요!", isKorean: false };
     }
-    // 색깔
-    if (t === 'red' || t === '빨간색') return { en: "I like red bricks!", kr: "빨간색 블록이 좋아요!" };
-    if (t === 'blue' || t === '파란색') return { en: "I like blue bricks!", kr: "파란색 블록이 좋아요!" };
-    if (t === 'yellow' || t === '노란색') return { en: "I like yellow bricks!", kr: "노란색 블록이 좋아요!" };
+    if (t === 'red') return { en: "I like red bricks!", kr: "빨간색 블록이 좋아요!", isKorean: false };
+    if (t === 'blue') return { en: "I like blue bricks!", kr: "파란색 블록이 좋아요!", isKorean: false };
+    if (t === 'yellow') return { en: "I like yellow bricks!", kr: "노란색 블록이 좋아요!", isKorean: false };
 
-    // 기본: 입력된 영문 원문 그대로 보존
+    // 기본 반환
     return {
       en: cleanRaw,
-      kr: isEnglishSpoken ? this.quickTranslateToKr(cleanRaw) : `시우가 "${cleanRaw}" 라고 말했어요!`
+      kr: isEnglishSpoken ? this.quickTranslateToKr(cleanRaw) : `"${cleanRaw}"`,
+      isKorean: false
     };
   }
 
@@ -830,11 +887,15 @@ class BrickyDialogueEngine {
 2. BALANCED REPHRASING & RECASTING (체면 손상 없는 세련된 뉘앙스 모델링):
    - If the learner expresses a clumsy or literal translation, never say "That's wrong".
    - Warmly validate their meaning, and smoothly weave how native speakers express that thought.
-3. RELEVANT ADULT TOPICS (실생활, 육아, 일상, 취미, 커리어 중심):
+3. KOREAN INPUT / BILINGUAL HANDLING (한국어로 말했을 때):
+   - If the learner speaks in Korean, understand their meaning 100% accurately.
+   - Reply in warm, natural English (so they practice listening), and provide natural Korean translation in 'replyKr'.
+   - Smoothly acknowledge their Korean topic and keep the reciprocal conversation flowing!
+4. RELEVANT ADULT TOPICS (실생활, 육아, 일상, 취미, 커리어 중심):
    - Natural conversations on parenting tips, daily routines, coffee, weekend plans, hobbies, travel, or work.
-4. STRICT TOPIC CONTINUITY & RECIPROCAL PING:
+5. STRICT TOPIC CONTINUITY & RECIPROCAL PING:
    - Answer their point directly first, then end with an engaging open-ended question.
-5. DYNAMIC AGE & NAME DETECTION:
+6. DYNAMIC AGE & NAME DETECTION:
    - If a child takes the mic (e.g. "I'm 7", "Siwoo"), output "detectedAge": {"age": 7, "ageGroup": "kids"}.
    - If a new name is mentioned, output "detectedName": {"en": "NameEn", "kr": "이름Kr"}.
 
@@ -856,11 +917,13 @@ Always return ONLY valid JSON:
 🎯 JUNIOR (8-14yo) TUTORING GUIDELINES:
 1. NATURAL CONVERSATIONAL TURNS (1-2 sentences, 10-15 words):
    - Speak clearly and with high enthusiasm, like a cool older friend or buddy.
-2. EXTENDED CONVERSATION & TOPIC CONTINUITY:
+2. KOREAN INPUT SUPPORT (한국어로 말했을 때):
+   - Understand their Korean speech 100%, acknowledge it, and reply in lively English with natural Korean translation in 'replyKr'.
+3. EXTENDED CONVERSATION & TOPIC CONTINUITY:
    - Topics: school subjects, online gaming, sports, animation, friends, dreams, hobbies.
-3. ENCOURAGEMENT & RECIPROCAL PING:
+4. ENCOURAGEMENT & RECIPROCAL PING:
    - Praise their curiosity and ideas. Always ask a fun question back.
-4. DYNAMIC DETECTION:
+5. DYNAMIC DETECTION:
    - If user indicates an adult/parent or name change, output "detectedAge" and "detectedName".
 
 Always return ONLY valid JSON:
@@ -888,11 +951,16 @@ Always return ONLY valid JSON:
    - First warmly accept the child's thought with lively emotion (Acknowledge: "Haha! / Yum! / Wow!").
    - Model the natural, correct sentence structure gently (Salient Recast: "You are asking if I am a baby? I am a cool 7-year-old Lego brick!").
    - Immediately toss a simple reciprocal ping back (Ping: "Are you a big boy?").
-3. STRICT TOPIC CONTINUITY (화제 일치 원칙 - 딴소리 절대 금지):
+3. KOREAN INPUT & BILINGUAL LEARNING (한국어로 말했을 때):
+   - When the child speaks in Korean (e.g. "피자 먹었어", "너 뭐 해?"):
+     1) Understand their Korean thought 100%.
+     2) Warmly accept it and model the English expression ("Yum, pizza! I love cheese pizza too! Do you like pizza?").
+     3) Provide gentle Korean translation in 'replyKr'.
+4. STRICT TOPIC CONTINUITY (화제 일치 원칙 - 딴소리 절대 금지):
    - ALWAYS stay on the EXACT SAME topic the child is speaking about.
-4. EFFORT-BASED PRAISE (노력 및 과정 중심 칭찬):
+5. EFFORT-BASED PRAISE (노력 및 과정 중심 칭찬):
    - Value the child's courage and attempt ("Great try speaking, ${studentEn}!").
-5. DYNAMIC AGE & NAME DETECTION:
+6. DYNAMIC AGE & NAME DETECTION:
    - If a parent or older learner speaks (e.g. "I'm Mom", "I am 35"), output "detectedAge": {"age": 35, "ageGroup": "adult"}.
    - If a new child's name is introduced, output "detectedName": {"en": "NameEn", "kr": "이름Kr"}.
 

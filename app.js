@@ -675,11 +675,16 @@ class ZoomBrickTalkApp {
         if (!this.isTutorSpeaking) {
           this.showYourTurnImpact();
           const studentKr = (this.dialogueEngine && this.dialogueEngine.studentName && this.dialogueEngine.studentName.kr) || '시우';
+          const isKo = window.kidSpeech && window.kidSpeech.currentLang === 'ko-KR';
           if (this.dom.pingpongBadgeText) {
-            this.dom.pingpongBadgeText.textContent = `👦 ${studentKr} 차례예요! (말씀하시면 여기에 작성돼요)`;
+            this.dom.pingpongBadgeText.textContent = isKo
+              ? `👦 ${studentKr} 차례예요! (한국어로 말씀하시면 여기에 작성돼요)`
+              : `👦 ${studentKr} 차례예요! (영어로 말씀하시면 여기에 작성돼요)`;
           }
           if (this.dom.pingpongEnText) {
-            this.dom.pingpongEnText.textContent = '"말씀하시거나 아래 추천 문장을 눌러보세요! 🎤"';
+            this.dom.pingpongEnText.textContent = isKo
+              ? '"한국어로 편하게 말씀하시거나 추천 문장을 눌러보세요! 🎤"'
+              : '"말씀하시거나 아래 추천 문장을 눌러보세요! 🎤"';
           }
           if (this.dom.pingpongKrText) {
             this.dom.pingpongKrText.textContent = '"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"';
@@ -1099,19 +1104,34 @@ class ZoomBrickTalkApp {
         if (!window.kidSpeech) return;
         const nextLang = window.kidSpeech.currentLang === 'en-US' ? 'ko-KR' : 'en-US';
         window.kidSpeech.setLanguage(nextLang);
-        this.updateSttLangUI();
+        this.updateSttLangUI(true);
         if (window.kidSounds) window.kidSounds.playPop();
       });
-      this.updateSttLangUI();
+      this.updateSttLangUI(false);
     }
   }
 
-  updateSttLangUI() {
+  updateSttLangUI(showToast = false) {
     if (!window.kidSpeech || !this.dom.sttLangBtn) return;
     const isEng = window.kidSpeech.currentLang === 'en-US';
     if (this.dom.sttLangFlag) this.dom.sttLangFlag.textContent = isEng ? '🇺🇸' : '🇰🇷';
-    if (this.dom.sttLangLabel) this.dom.sttLangLabel.textContent = isEng ? '영어 인식 (English)' : '한영 인식 (한국어)';
+    if (this.dom.sttLangLabel) this.dom.sttLangLabel.textContent = isEng ? '영어 인식 (English)' : '한국어 인식 (한국어)';
     this.dom.sttLangBtn.classList.toggle('ko', !isEng);
+
+    const studentKr = (this.dialogueEngine && this.dialogueEngine.studentName && this.dialogueEngine.studentName.kr) || '학습자';
+    if (this.dom.pingpongBadgeText) {
+      this.dom.pingpongBadgeText.textContent = isEng
+        ? `👦 ${studentKr} 차례예요! (영어로 말씀하시면 여기에 작성돼요)`
+        : `👦 ${studentKr} 차례예요! (한국어로 말씀하시면 여기에 작성돼요)`;
+    }
+
+    if (showToast) {
+      if (isEng) {
+        this.showPraise('🇺🇸 영어 인식 모드로 변경되었습니다! (영어로 말씀해주세요)');
+      } else {
+        this.showPraise('🇰🇷 한국어 인식 모드로 변경되었습니다! (한국어로 말씀해주세요)');
+      }
+    }
   }
 
   /**

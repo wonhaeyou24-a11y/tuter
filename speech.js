@@ -198,11 +198,19 @@ class KidSpeechEngine {
   }
 
   /**
-   * 🌟 문맥 및 추천 답변 힌트 등록 (선택지 목록과 비교하여 정확도 극대화)
+   * 🌟 문맥 및 추천 답변 힌트 등록 (영어 및 한국어 선택지 목록 모두 등록하여 정확도 극대화)
    */
   setContextHints(hints = []) {
     if (Array.isArray(hints)) {
-      this.contextHints = hints.map(h => (typeof h === 'string' ? h : (h.en || '')).trim()).filter(Boolean);
+      this.contextHints = [];
+      hints.forEach(h => {
+        if (typeof h === 'string') {
+          if (h.trim()) this.contextHints.push(h.trim());
+        } else if (h && typeof h === 'object') {
+          if (h.en) this.contextHints.push(h.en.trim());
+          if (h.kr) this.contextHints.push(h.kr.trim());
+        }
+      });
     }
   }
 
@@ -215,7 +223,7 @@ class KidSpeechEngine {
       return (result[0] && result[0].transcript) ? result[0].transcript : '';
     }
 
-    const clean = s => (s || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+    const clean = s => (s || '').toLowerCase().replace(/[^a-z0-9가-힣\s]/g, '').trim();
 
     // 힌트 목록의 단어 집합 생성
     const hintWords = new Set();
@@ -255,7 +263,7 @@ class KidSpeechEngine {
   }
 
   /**
-   * 🌟 아동 발음 및 한국인 억양 영어 스마트 보정 (Fuzzy & Phonetic Corrector)
+   * 🌟 아동 발음 및 한국어/영어 맞춤형 음성 스마트 보정 (Fuzzy & Phonetic Corrector)
    */
   correctChildSpeech(rawText) {
     if (!rawText || typeof rawText !== 'string') return '';
@@ -264,7 +272,19 @@ class KidSpeechEngine {
     let text = rawText.replace(/["'“”‘’]/g, '').trim();
     if (!text) return '';
 
-    // 일반적인 아동 오인식 단어 및 콩글리시 발음 사전 매핑
+    // 🌟 한국어 인식 모드이거나 한국어가 포함된 발화: 한글 원형 100% 보존 및 한국어 오인식 보정
+    const hasKorean = /[가-힣]/.test(text);
+    if (this.currentLang === 'ko-KR' || hasKorean) {
+      text = text.replace(/브리키/g, '브릭키')
+                 .replace(/브리키야/g, '브릭키야')
+                 .replace(/불이키/g, '브릭키')
+                 .replace(/브릭이/g, '브릭키')
+                 .replace(/내고/g, '레고')
+                 .replace(/래고/g, '레고');
+      return text;
+    }
+
+    // 🌟 영어 인식 모드: 일반적인 아동 오인식 단어 및 콩글리시 발음 사전 매핑
     const replacements = [
       [/\bbriki\b/gi, 'Bricky'],
       [/\bricky\b/gi, 'Bricky'],
@@ -361,14 +381,36 @@ class KidSpeechEngine {
   }
 
   /**
-   * 음성 인식 언어 변경 ('ko-KR' 또는 'en-US')
+   * 🌟 음성 인식 언어 변경 ('ko-KR' 또는 'en-US')
+   * - 실행 중인 STT 세션을 즉시 중단하고 새 언어로 재시작하여 언어 변경을 100% 보장
    */
   setLanguage(lang) {
-    this.currentLang = lang;
-    if (this.recognition) {
-      this.recognition.lang = lang;
+    if (this.currentLang === lang && this.recognition && this.recognition.lang === lang) {
+      return;
     }
+    this.currentLang = lang;
     try { localStorage.setItem('bricktalk_stt_lang', lang); } catch (e) {}
+
+    if (this.recognition) {
+      const wasListening = this.isListening;
+      try {
+        this.recognition.abort();
+      } catch (e) {}
+
+      this.recognition.lang = lang;
+      this.speechBuffer = '';
+      this.latestInterim = '';
+
+      if (wasListening && !this.isTutorSpeaking) {
+        setTimeout(() => {
+          try {
+            if (this.recognition && this.isListening && !this.isTutorSpeaking) {
+              this.recognition.start();
+            }
+          } catch (e) {}
+        }, 120);
+      }
+    }
   }
 
   /**
