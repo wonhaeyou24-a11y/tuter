@@ -87,11 +87,8 @@ class ZoomBrickTalkApp {
       sttLangLabel: document.getElementById('stt-lang-label'),
       modePingpongBtn: document.getElementById('mode-pingpong-btn'),
       modeRealtimeBtn: document.getElementById('mode-realtime-btn'),
-      pingpongControlCenter: document.getElementById('pingpong-control-center'),
-      pingpongSpeechCard: document.getElementById('pingpong-speech-card'),
+      pingpongActionsGroup: document.getElementById('pingpong-actions-group'),
       pingpongBadgeText: document.getElementById('pingpong-badge-text'),
-      pingpongEnText: document.getElementById('pingpong-en-text'),
-      pingpongKrText: document.getElementById('pingpong-kr-text'),
       pingpongSendBtn: document.getElementById('pingpong-send-btn'),
       pingpongRetryBtn: document.getElementById('pingpong-retry-btn')
     };
@@ -156,7 +153,14 @@ class ZoomBrickTalkApp {
     const isPingPong = this.dialogueMode === 'pingpong';
     if (this.dom.modePingpongBtn) this.dom.modePingpongBtn.classList.toggle('active', isPingPong);
     if (this.dom.modeRealtimeBtn) this.dom.modeRealtimeBtn.classList.toggle('active', !isPingPong);
-    if (this.dom.pingpongControlCenter) this.dom.pingpongControlCenter.classList.toggle('active', isPingPong);
+    if (this.dom.studentPanel) this.dom.studentPanel.classList.toggle('mode-realtime-active', !isPingPong);
+    if (this.dom.pingpongActionsGroup) this.dom.pingpongActionsGroup.style.display = isPingPong ? 'flex' : 'none';
+    if (this.dom.studentSpeechPill) this.dom.studentSpeechPill.style.display = 'flex';
+    if (this.dom.pingpongBadgeText) {
+      this.dom.pingpongBadgeText.textContent = isPingPong
+        ? "말씀하시면 여기에 큰 글씨로 작성돼요! 🎤"
+        : "⚡ 실시간 자동 대화 (말이 끝나면 즉시 대답해요)";
+    }
     if (this.dom.micGuideText) {
       this.dom.micGuideText.textContent = isPingPong ? "1:1 핑퐁 모드 💬" : "실시간 자동 ⚡";
     }
@@ -340,11 +344,11 @@ class ZoomBrickTalkApp {
       `;
       card.addEventListener('click', () => {
         this.clearSilenceTimer();
-        if (this.dom.pingpongEnText) {
-          this.dom.pingpongEnText.textContent = `"${choice.en}"`;
+        if (this.dom.studentSpokenText) {
+          this.dom.studentSpokenText.textContent = `"${choice.en}"`;
         }
-        if (this.dom.pingpongKrText) {
-          this.dom.pingpongKrText.textContent = `"${choice.kr}"`;
+        if (this.dom.studentSpokenKr) {
+          this.dom.studentSpokenKr.textContent = `"${choice.kr}"`;
         }
         if (this.dom.pingpongSendBtn) {
           this.dom.pingpongSendBtn.classList.add('disabled');
@@ -367,7 +371,8 @@ class ZoomBrickTalkApp {
    */
   startSilenceTimer() {
     this.clearSilenceTimer();
-    if (!this.autoListenMode || this.hasNudged) return;
+    // 🌟 1:1 핑퐁 대화 모드에서는 아이가 충분히 생각하고 [대화 보내기]를 누를 때까지 브릭키가 말을 끊지 않고 영원히 대기!
+    if (this.dialogueMode === 'pingpong' || !this.autoListenMode || this.hasNudged) return;
 
     this.silenceTimer = setTimeout(() => {
       this.handleSilenceNudge();
@@ -378,7 +383,8 @@ class ZoomBrickTalkApp {
    * 침묵 시 브릭키의 1회 친절 넛지 (반복 루프 절대 없음)
    */
   handleSilenceNudge() {
-    if (this.isTutorSpeaking) return;
+    // 🌟 핑퐁 대화 모드이거나 브릭키가 말하고 있을 때는 침묵 넛지 절대 실행 금지
+    if (this.dialogueMode === 'pingpong' || this.isTutorSpeaking) return;
     this.nudgeLevel = (this.nudgeLevel || 0) + 1;
     if (this.nudgeLevel >= 3) this.hasNudged = true; // 최대 3단계 후엔 조용히 기다림 (무한 반복 방지)
 
@@ -647,16 +653,10 @@ class ZoomBrickTalkApp {
             this.dom.studentSpokenKr.textContent = `시우의 목소리를 귀 기울여 듣고 있어요! 👂`;
           }
 
-          // 🌟 1:1 핑퐁 대화 모드 연동: 내 화상화면 가운데 카드에 실시간 작성!
+          // 🌟 1:1 핑퐁 대화 모드 연동: 하단 대형 대화 바에 실시간 작성 & 전송 버튼 활성화!
           this.currentPendingText = interimText;
-          if (this.dom.pingpongEnText) {
-            this.dom.pingpongEnText.textContent = `"${interimText}..."`;
-          }
-          if (this.dom.pingpongKrText) {
-            this.dom.pingpongKrText.textContent = this.dialogueEngine.quickTranslateToKr(interimText);
-          }
           if (this.dom.pingpongBadgeText) {
-            this.dom.pingpongBadgeText.textContent = "🎙️ 실시간으로 듣고 있어요! 말이 끝나면 아래 전송을 눌러주세요!";
+            this.dom.pingpongBadgeText.textContent = "🎙️ 실시간으로 듣고 있어요! 말이 끝나면 아래 [대화 보내기 🚀]를 눌러주세요!";
           }
           if (this.dom.pingpongSendBtn) {
             this.dom.pingpongSendBtn.classList.remove('disabled');
@@ -681,22 +681,22 @@ class ZoomBrickTalkApp {
       const cleanText = spokenText.trim();
       this.currentPendingText = cleanText;
 
-      // 🌟 핑퐁 대화 센터 카드 업데이트
-      if (this.dom.pingpongEnText) {
-        this.dom.pingpongEnText.textContent = `"${cleanText}"`;
+      // 🌟 하단 대형 대화 바 업데이트 (글씨 크게!)
+      if (this.dom.studentSpokenText) {
+        this.dom.studentSpokenText.textContent = `"${cleanText}"`;
       }
-      if (this.dom.pingpongKrText) {
-        this.dom.pingpongKrText.textContent = this.dialogueEngine.quickTranslateToKr(cleanText);
+      if (this.dom.studentSpokenKr) {
+        this.dom.studentSpokenKr.textContent = this.dialogueEngine.quickTranslateToKr(cleanText);
       }
       if (this.dom.pingpongBadgeText) {
-        this.dom.pingpongBadgeText.textContent = "✨ 말씀이 끝났어요! 아래 [대화 보내기]를 눌러주세요!";
+        this.dom.pingpongBadgeText.textContent = "✨ 말씀이 끝났어요! 아래 [대화 보내기 🚀]를 눌러주세요!";
       }
       if (this.dom.pingpongSendBtn) {
         this.dom.pingpongSendBtn.classList.remove('disabled');
       }
 
       // 🌟 [핵심 모드 분기]:
-      // 1:1 핑퐁 모드: 자동으로 브릭키에게 넘어가지 않고, 아이가 가운데 [대화 보내기 🚀] 버튼을 누를 때까지 편안하게 대기!
+      // 1:1 핑퐁 모드: 자동으로 브릭키에게 넘어가지 않고, 아이가 아래 [대화 보내기 🚀] 버튼을 누를 때까지 편안하게 대기!
       // 실시간 자동 모드: 말을 멈추면 2.6초 후 즉시 자동 전송!
       if (this.dialogueMode === 'realtime') {
         this.handleUserSpeak(cleanText, null, '🎤');
@@ -825,7 +825,7 @@ class ZoomBrickTalkApp {
       });
     }
 
-    // 🌟 1:1 핑퐁 대화 모드 전용 대형 전송 버튼 클릭
+    // 🌟 1:1 핑퐁 대화 모드 전용 하단 독 대화 보내기 버튼 클릭
     if (this.dom.pingpongSendBtn) {
       this.dom.pingpongSendBtn.addEventListener('click', () => {
         const text = (this.currentPendingText || '').trim();
@@ -833,8 +833,8 @@ class ZoomBrickTalkApp {
         if (window.kidSounds) window.kidSounds.playStarSparkle();
         this.currentPendingText = '';
         this.dom.pingpongSendBtn.classList.add('disabled');
-        if (this.dom.pingpongEnText) this.dom.pingpongEnText.textContent = `브릭키에게 전송 중... 🚀 "${text}"`;
-        if (this.dom.pingpongBadgeText) this.dom.pingpongBadgeText.textContent = "👂 브릭키가 시우의 말을 듣고 있어요!";
+        if (this.dom.studentSpokenText) this.dom.studentSpokenText.textContent = `"${text}"`;
+        if (this.dom.pingpongBadgeText) this.dom.pingpongBadgeText.textContent = "👂 브릭키가 시우의 말을 듣고 생각 중이에요! 🧱";
         this.handleUserSpeak(text, null, '🚀');
       });
     }
@@ -844,9 +844,9 @@ class ZoomBrickTalkApp {
       this.dom.pingpongRetryBtn.addEventListener('click', () => {
         if (window.kidSounds) window.kidSounds.playPop();
         this.currentPendingText = '';
-        if (this.dom.pingpongEnText) this.dom.pingpongEnText.textContent = '"말씀하시거나 아래 추천 문장을 눌러보세요! 🎤"';
-        if (this.dom.pingpongKrText) this.dom.pingpongKrText.textContent = '"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"';
-        if (this.dom.pingpongBadgeText) this.dom.pingpongBadgeText.textContent = "👦 시우가 하고 있는 말 (말씀하시면 여기에 작성돼요)";
+        if (this.dom.studentSpokenText) this.dom.studentSpokenText.textContent = '"말씀하시거나 아래 추천 문장을 눌러보세요!"';
+        if (this.dom.studentSpokenKr) this.dom.studentSpokenKr.textContent = '"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"';
+        if (this.dom.pingpongBadgeText) this.dom.pingpongBadgeText.textContent = "말씀하시면 여기에 큰 글씨로 작성돼요! 🎤";
         if (this.dom.pingpongSendBtn) this.dom.pingpongSendBtn.classList.add('disabled');
         if (window.kidSpeech) {
           window.kidSpeech.speechBuffer = '';

@@ -122,30 +122,6 @@
             <button class="cam-start-btn" id="cam-start-btn">📷 카메라 켜기</button>
           </div>
 
-          <!-- 🌟 1:1 핑퐁 대화 모드 전용: 내 화상화면 가운데 크게 나오는 대화 작성 & 대화보내기 센터 -->
-          <div class="pingpong-control-center active" id="pingpong-control-center">
-            <div class="pingpong-speech-card" id="pingpong-speech-card">
-              <div class="pingpong-badge">
-                <span class="pingpong-badge-dot"></span>
-                <span id="pingpong-badge-text">👦 시우가 하고 있는 말 (말씀하시면 여기에 작성돼요)</span>
-              </div>
-              <div class="pingpong-en-text" id="pingpong-en-text">"말씀하시거나 아래 추천 문장을 눌러보세요! 🎤"</div>
-              <div class="pingpong-kr-text" id="pingpong-kr-text">"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"</div>
-            </div>
-
-            <!-- 중앙: 아이가 쉽게 누를 수 있는 큼직한 원터치 전송 & 재시도 버튼 그룹 -->
-            <div class="pingpong-action-buttons">
-              <button class="pingpong-send-btn disabled" id="pingpong-send-btn">
-                <span class="btn-icon">🚀</span>
-                <span class="btn-label">브릭키에게 대화 보내기</span>
-                <span class="btn-sub">누르면 브릭키가 대답하고 질문해요!</span>
-              </button>
-              <button class="pingpong-retry-btn" id="pingpong-retry-btn" title="지우고 다시 말하기">
-                <span>🔄 다시 말하기</span>
-              </button>
-            </div>
-          </div>
-
           <!-- 🌟 시우 발화 턴 비주얼 임팩트 배너 (내가 말해야 할 타이밍에 나타남) -->
           <div class="turn-indicator-banner" id="turn-indicator-banner" style="display: none;">
             <span class="turn-pulse-icon">🎙️</span>
@@ -162,7 +138,7 @@
             <span></span><span></span><span></span><span></span>
           </div>
 
-          <!-- 우측 하단 이름표 -->
+          <!-- 우측 하단 이름표 (위치 살짝 조정) -->
           <div class="feed-overlay-tag student-tag">
             <span class="tag-status-dot green" id="user-cam-status-dot"></span>
             <span class="tag-name">시우 (Siwoo, 7세)</span>
@@ -171,12 +147,28 @@
             </div>
           </div>
 
-          <!-- 💬 시우 전용 하단 자막 바 (내가 말할 때만 우측 하단에 자막 팝업) -->
-          <div class="kai-subtitle-bar" id="student-speech-pill" style="display: none;">
-            <div class="kai-speaker-tag">👦 Siwoo</div>
-            <div class="kai-spoken-wrap">
-              <div class="kai-spoken-en" id="student-spoken-text">"I am happy!"</div>
-              <div class="kai-spoken-kr" id="student-spoken-kr">"기분이 아주 좋아요!"</div>
+          <!-- 💬 시우 전용 하단 대형 대화 작성 & 전송 센터 (얼굴을 절대 가리지 않고 하단에 시원하게 배치!) -->
+          <div class="kai-subtitle-bar wide-dock-bar active" id="student-speech-pill">
+            <div class="kai-spoken-left">
+              <div class="kai-speaker-tag-row">
+                <span class="kai-speaker-tag">👦 Siwoo</span>
+                <span class="kai-speech-badge" id="pingpong-badge-text">말씀하시면 여기에 큰 글씨로 작성돼요! 🎤</span>
+              </div>
+              <div class="kai-spoken-wrap">
+                <div class="kai-spoken-en" id="student-spoken-text">"말씀하시거나 아래 추천 문장을 눌러보세요!"</div>
+                <div class="kai-spoken-kr" id="student-spoken-kr">"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"</div>
+              </div>
+            </div>
+
+            <!-- 🌟 하단 일체형: 아이 손가락으로 누르기 쉬운 큼직한 전송 & 재시도 버튼 그룹 -->
+            <div class="kai-dock-actions" id="pingpong-actions-group">
+              <button class="dock-send-btn disabled" id="pingpong-send-btn" title="브릭키에게 대화 보내기">
+                <span class="dock-send-icon">🚀</span>
+                <span class="dock-send-label">대화 보내기</span>
+              </button>
+              <button class="dock-retry-btn" id="pingpong-retry-btn" title="지우고 다시 말하기">
+                <span>🔄 다시 말하기</span>
+              </button>
             </div>
           </div>
         </div>
