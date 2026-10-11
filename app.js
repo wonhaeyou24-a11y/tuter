@@ -333,6 +333,9 @@ class ZoomBrickTalkApp {
    * 슬림 3D 브릭 추천 답변 칩 렌더링
    */
   renderChoiceCards(choices) {
+    if (window.kidSpeech && typeof window.kidSpeech.setContextHints === 'function') {
+      window.kidSpeech.setContextHints(choices);
+    }
     this.dom.cardsGrid.innerHTML = '';
     (choices || []).slice(0, 3).forEach(choice => {
       const card = document.createElement('div');
@@ -639,14 +642,15 @@ class ZoomBrickTalkApp {
           }
           this.dom.studentSpeechPill.style.display = 'flex';
 
-          // 실시간 단어 분할 및 최신 발화 단어 팝핑 하이라이트 효과
-          const words = (interimText || '').trim().split(/\s+/).filter(Boolean);
+          // 실시간 단어 분할 및 최신 발화 단어 팝핑 하이라이트 효과 (따옴표 이중화 방지)
+          const pureInterim = (interimText || '').replace(/["'“”‘’]/g, '').trim();
+          const words = pureInterim.split(/\s+/).filter(Boolean);
           if (words.length > 0) {
             const lastWord = words.pop();
             const prevWords = words.join(' ');
             this.dom.studentSpokenText.innerHTML = `🎙️ "${prevWords ? prevWords + ' ' : ''}<span class="word-pop-highlight">${lastWord}</span>..."`;
           } else {
-            this.dom.studentSpokenText.textContent = `🎙️ "${interimText}..."`;
+            this.dom.studentSpokenText.textContent = `🎙️ "${pureInterim}..."`;
           }
 
           if (this.dom.studentSpokenKr) {
@@ -654,7 +658,7 @@ class ZoomBrickTalkApp {
           }
 
           // 🌟 1:1 핑퐁 대화 모드 연동: 하단 대형 대화 바에 실시간 작성 & 전송 버튼 활성화!
-          this.currentPendingText = interimText;
+          this.currentPendingText = pureInterim;
           if (this.dom.pingpongBadgeText) {
             this.dom.pingpongBadgeText.textContent = "🎙️ 실시간으로 듣고 있어요! 말이 끝나면 아래 [대화 보내기 🚀]를 눌러주세요!";
           }
@@ -678,10 +682,10 @@ class ZoomBrickTalkApp {
     }
 
     if (spokenText && spokenText.trim().length > 0) {
-      const cleanText = spokenText.trim();
+      const cleanText = spokenText.replace(/["'“”‘’]/g, '').trim();
       this.currentPendingText = cleanText;
 
-      // 🌟 하단 대형 대화 바 업데이트 (글씨 크게!)
+      // 🌟 하단 대형 대화 바 업데이트 (글씨 크게 & 따옴표 깨끗이!)
       if (this.dom.studentSpokenText) {
         this.dom.studentSpokenText.textContent = `"${cleanText}"`;
       }

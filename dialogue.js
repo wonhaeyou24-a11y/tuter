@@ -448,21 +448,34 @@ class BrickyDialogueEngine {
    * 🌟 시우의 일상 영어 발화를 자연스러운 7세 한국어로 스마트 번역 매핑
    */
   quickTranslateToKr(enText) {
-    const t = (enText || '').toLowerCase().trim();
-    if (t.includes('favorite food')) return "브릭키가 제일 좋아하는 음식은 뭐야?";
-    if (t.includes('how old')) return "브릭키는 몇 살이야?";
-    if (t.includes('who are you')) return "브릭키 너는 누구야?";
-    if (t.includes('help me')) return "브릭키 나 만드는 거 도와줄래?";
+    const cleanEn = (enText || '').replace(/["'“”‘’]/g, '').trim();
+    const t = cleanEn.toLowerCase();
+    if (!t) return "";
+
+    // 🌟 7세 아동 빈출 회화 스마트 번역
+    if (t.includes('you baby') || t.includes('you are a baby') || t.includes("you're a baby")) return "너 아기야? 👶";
+    if (t.includes('big boy') || t.includes('i am a big boy')) return "나 멋진 형님(빅 보이)이야! 👦";
+    if (t.includes('cool lego') || t.includes('cool brick')) return "브릭키 너 정말 멋진 레고야! 🧱";
+    if (t.includes('favorite food') || t.includes('favorite snack')) return "브릭키가 제일 좋아하는 음식은 뭐야? 🍕";
+    if (t.includes('how old')) return "브릭키는 몇 살이야? 🎂";
+    if (t.includes('who are you')) return "브릭키 너는 누구야? 🤔";
+    if (t.includes('help me')) return "브릭키 나 만드는 거 도와줄래? 🛠️";
     if (t.includes('what are you doing')) return "브릭키 지금 뭐 하고 있어?";
     if (t.includes('how about you') || t.includes('what about you')) return "브릭키 너는 어때?";
     if (t.includes('do you like')) return "브릭키도 이거 좋아해?";
-    if (t.includes('i ate') || t.includes('for lunch')) return "나 맛있는 점심 먹었어!";
-    if (t.includes('pizza')) return "나 피자 좋아해!";
-    if (t.includes('slide')) return "나 미끄럼틀 탔어!";
-    if (t.includes('playground')) return "나 놀이터에서 놀았어!";
-    if (t.includes('rocket') || t.includes('space')) return "우리 멋진 우주 로켓 만들자!";
-    if (t.includes('lego') || t.includes('build')) return "우리 재미있는 레고 만들자!";
-    return `"${enText}" 라고 말했어요! ✨`;
+    if (t.includes('sweet mochi') || t.includes('like mochi')) return "나 달콤한 찹쌀떡(모찌) 좋아해! 🍡";
+    if (t.includes('strawberry')) return "나 딸기 맛 제일 좋아해! 🍓";
+    if (t.includes('i ate') || t.includes('breakfast') || t.includes('lunch')) return "나 맛있게 밥 먹었어! 🍽️";
+    if (t.includes('happy') || t.includes('good')) return "나 오늘 기분 최고야! 😊";
+    if (t.includes('pizza')) return "나 피자 좋아해! 🍕";
+    if (t.includes('slide') || t.includes('swing')) return "나 놀이터에서 신나게 탔어! 🛝";
+    if (t.includes('playground')) return "나 놀이터에서 놀았어! 🏃";
+    if (t.includes('rocket') || t.includes('space')) return "우리 멋진 우주 로켓 만들자! 🚀";
+    if (t.includes('lego') || t.includes('build')) return "우리 재미있는 레고 만들자! 🧱";
+    if (t === 'yes' || t.startsWith('yes ')) return "응, 맞아! 👍";
+    if (t === 'no' || t.startsWith('no ')) return "아니야! 🙅";
+
+    return `"${cleanEn}" 라고 말했어요! ✨`;
   }
 
   /**

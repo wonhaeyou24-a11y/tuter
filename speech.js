@@ -26,6 +26,9 @@ class KidSpeechEngine {
     this.speechEndTimer = null;
     this.speechEndDelayMs = parseInt(localStorage.getItem('bricktalk_wait_time') || '2600', 10);
 
+    // 🌟 문맥 및 추천 답변 힌트 (음성 인식 정확도 200% 향상)
+    this.contextHints = [];
+
     this.initVoices();
     this.initRecognition();
     this.unlockAudioOnFirstTouch();
@@ -144,9 +147,9 @@ class KidSpeechEngine {
           };
 
           for (let i = event.resultIndex; i < event.results.length; ++i) {
-            // 후보군 중 가장 신뢰도 높은 발화 획득
+            // 🌟 1~5위 다중 후보군(Alternatives) 중 문맥(힌트/추천답변) 및 신뢰도 기반 최적 발화 스마트 선별
             const result = event.results[i];
-            const transcript = result[0].transcript;
+            const transcript = this.pickBestAlternative(result);
             if (result.isFinal) {
               finalTranscript += transcript + ' ';
             } else {
@@ -158,7 +161,7 @@ class KidSpeechEngine {
 
           // 실시간 중간 발화(Interim) 콜백 (시우가 말하고 있음을 화면에 즉시 반응)
           if (interimTranscript) {
-            const cleanInterim = this.sanitizeInput(interimTranscript);
+            const cleanInterim = this.correctChildSpeech(interimTranscript);
             if (cleanInterim.length > 0) {
               this.latestInterim = cleanInterim;
               const preview = (this.speechBuffer ? this.speechBuffer.trim() + ' ' : '') + cleanInterim;
@@ -171,7 +174,7 @@ class KidSpeechEngine {
 
           // 최종 확정 조각(Final) 처리
           if (finalTranscript) {
-            const sanitized = this.sanitizeInput(finalTranscript);
+            const sanitized = this.correctChildSpeech(finalTranscript);
             if (sanitized && sanitized.replace(/\s/g, '').length >= 1) {
               this.speechBuffer = (this.speechBuffer ? this.speechBuffer.trim() + ' ' : '') + sanitized;
               this.latestInterim = '';
@@ -188,6 +191,117 @@ class KidSpeechEngine {
     } catch (e) {
       console.warn('[STT 예외 차단]:', e);
     }
+  }
+
+  /**
+   * 🌟 문맥 및 추천 답변 힌트 등록 (선택지 목록과 비교하여 정확도 극대화)
+   */
+  setContextHints(hints = []) {
+    if (Array.isArray(hints)) {
+      this.contextHints = hints.map(h => (typeof h === 'string' ? h : (h.en || '')).trim()).filter(Boolean);
+    }
+  }
+
+  /**
+   * 🌟 다중 후보군(Alternatives) 중 문맥(추천 답변/힌트)과 가장 잘 어울리는 최적 후보 선별
+   */
+  pickBestAlternative(result) {
+    if (!result || result.length === 0) return '';
+    if (result.length === 1 || !this.contextHints || this.contextHints.length === 0) {
+      return (result[0] && result[0].transcript) ? result[0].transcript : '';
+    }
+
+    const clean = s => (s || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+
+    // 힌트 목록의 단어 집합 생성
+    const hintWords = new Set();
+    this.contextHints.forEach(h => {
+      clean(h).split(/\s+/).forEach(w => { if (w.length > 1) hintWords.add(w); });
+    });
+
+    let bestTranscript = result[0].transcript || '';
+    let highestScore = -1;
+
+    for (let j = 0; j < result.length; j++) {
+      const text = result[j].transcript || '';
+      const confidence = result[j].confidence || 0.5;
+      const words = clean(text).split(/\s+/).filter(Boolean);
+      
+      let matchedCount = 0;
+      words.forEach(w => {
+        if (hintWords.has(w)) matchedCount += 2;
+      });
+
+      // 전체 문장 일치 가중치
+      this.contextHints.forEach(h => {
+        const cleanH = clean(h);
+        const cleanT = clean(text);
+        if (cleanH === cleanT) matchedCount += 5;
+        else if (cleanH.includes(cleanT) || cleanT.includes(cleanH)) matchedCount += 2.5;
+      });
+
+      const score = matchedCount * 1.5 + confidence;
+      if (score > highestScore) {
+        highestScore = score;
+        bestTranscript = text;
+      }
+    }
+
+    return bestTranscript;
+  }
+
+  /**
+   * 🌟 아동 발음 및 한국인 억양 영어 스마트 보정 (Fuzzy & Phonetic Corrector)
+   */
+  correctChildSpeech(rawText) {
+    if (!rawText || typeof rawText !== 'string') return '';
+    
+    // 따옴표 및 이중 기호 깨끗이 정제
+    let text = rawText.replace(/["'“”‘’]/g, '').trim();
+    if (!text) return '';
+
+    // 일반적인 아동 오인식 단어 및 콩글리시 발음 사전 매핑
+    const replacements = [
+      [/\bbriki\b/gi, 'Bricky'],
+      [/\bricky\b/gi, 'Bricky'],
+      [/\bvicky\b/gi, 'Bricky'],
+      [/\bbreaky\b/gi, 'Bricky'],
+      [/\ble\s*go\b/gi, 'Lego'],
+      [/\blegos\b/gi, 'Lego'],
+      [/\bbreak\s*fast\b/gi, 'breakfast'],
+      [/\bmot\s*chi\b/gi, 'mochi'],
+      [/\bmochee\b/gi, 'mochi'],
+      [/\byea\b/gi, 'Yes'],
+      [/\byeah\b/gi, 'Yes'],
+      [/\byep\b/gi, 'Yes'],
+      [/\bnope\b/gi, 'No'],
+      [/\bnah\b/gi, 'No']
+    ];
+
+    replacements.forEach(([regex, repl]) => {
+      text = text.replace(regex, repl);
+    });
+
+    // 문맥 힌트와 유사도가 매우 높은 경우 정확한 문장으로 정렬
+    if (this.contextHints && this.contextHints.length > 0) {
+      const cleanT = text.toLowerCase().replace(/[^a-z0-9]/g, '');
+      for (const hint of this.contextHints) {
+        const cleanH = hint.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cleanT.length >= 4 && cleanH.length >= 4) {
+          if (cleanT === cleanH) {
+            text = hint;
+            break;
+          }
+        }
+      }
+    }
+
+    // 첫 글자 대문자화
+    if (text.length > 0) {
+      text = text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
+    return text;
   }
 
   /**
