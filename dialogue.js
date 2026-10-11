@@ -18,11 +18,46 @@ class BrickyDialogueEngine {
 
     // 🌟 동적 학습자 이름 (기본값: 시우, 상황에 따라 다른 사람이 참여 시 실시간 자동 전환)
     try {
-      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('bricktalk_student_name') : null;
-      this.studentName = saved ? JSON.parse(saved) : { en: 'Siwoo', kr: '시우' };
+      const savedName = typeof localStorage !== 'undefined' ? localStorage.getItem('bricktalk_student_name') : null;
+      this.studentName = savedName ? JSON.parse(savedName) : { en: 'Siwoo', kr: '시우' };
     } catch (e) {
       this.studentName = { en: 'Siwoo', kr: '시우' };
     }
+
+    // 🌟 동적 학습자 연령대 & 교수법 모드 ('kids': 7세이하 유아, 'junior': 8~14세 초·중등, 'adult': 15세이상/성인/부모님)
+    try {
+      const savedAge = typeof localStorage !== 'undefined' ? localStorage.getItem('bricktalk_learner_age') : null;
+      const parsedAge = savedAge ? JSON.parse(savedAge) : null;
+      this.learnerAge = parsedAge?.age || 7;
+      this.ageGroup = parsedAge?.ageGroup || 'kids';
+    } catch (e) {
+      this.learnerAge = 7;
+      this.ageGroup = 'kids';
+    }
+  }
+
+  /**
+   * 🌟 학습자 연령대 및 교수법 모드 설정 & 영구 저장
+   */
+  setLearnerAge(age, ageGroup = null) {
+    const numAge = parseInt(age, 10) || 7;
+    let group = ageGroup;
+    if (!group) {
+      if (numAge <= 7) group = 'kids';
+      else if (numAge <= 14) group = 'junior';
+      else group = 'adult';
+    }
+    this.learnerAge = numAge;
+    this.ageGroup = group;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('bricktalk_learner_age', JSON.stringify({
+          age: this.learnerAge,
+          ageGroup: this.ageGroup
+        }));
+      }
+    } catch (e) {}
+    return { age: this.learnerAge, ageGroup: this.ageGroup };
   }
 
   /**
@@ -96,6 +131,62 @@ class BrickyDialogueEngine {
   }
 
   /**
+   * 🌟 발화 내용 중 나이/연령대/부모 참여 인텐트 감지 (Kids vs Junior vs Adult)
+   */
+  detectAgeIntent(rawText) {
+    if (!rawText || typeof rawText !== 'string') return null;
+    const clean = rawText.replace(/["'“”‘’.,!?]/g, '').trim().toLowerCase();
+
+    // 1. 성인/학부모 표현 감지
+    const adultPatterns = [
+      /\b(?:i am|i'm|im)\s+(?:mom|mother|dad|father|a parent|an adult|parent|adult)\b/i,
+      /\b(?:엄마|아빠|학부모|어른|보호자)(?:야|예요|입니다|이야|요)?\b/,
+      /\b(?:i am|i'm|im)\s+([2-9][0-9])\b/i, // 20세 이상
+      /\b([2-9][0-9])\s*(?:years old|살)\b/i,
+      /(?:서른|마흔|쉰|예순)\s*살/
+    ];
+    for (const pat of adultPatterns) {
+      if (pat.test(clean)) {
+        const numMatch = clean.match(/([2-9][0-9])/);
+        const age = numMatch ? parseInt(numMatch[1], 10) : 35;
+        return { age, ageGroup: 'adult', label: '성인/학부모' };
+      }
+    }
+
+    // 2. 초등/주니어 표현 감지 (8세~14세)
+    const juniorPatterns = [
+      /\b(?:i am|i'm|im)\s+(?:8|9|10|11|12|13|14|eight|nine|ten|eleven|twelve|thirteen|fourteen)\b/i,
+      /\b(?:8|9|10|11|12|13|14)\s*(?:years old|살)\b/i,
+      /\b(?:초등학생|초등학교|중학생|중학교)\b/,
+      /(?:여덟|아홉|열|열한|열두|열세|열네)\s*살/
+    ];
+    for (const pat of juniorPatterns) {
+      if (pat.test(clean)) {
+        const numMatch = clean.match(/\b(8|9|10|11|12|13|14)\b/);
+        const age = numMatch ? parseInt(numMatch[1], 10) : 10;
+        return { age, ageGroup: 'junior', label: '주니어(초등)' };
+      }
+    }
+
+    // 3. 유아/키즈 표현 감지 (3세~7세)
+    const kidsPatterns = [
+      /\b(?:i am|i'm|im)\s+(?:3|4|5|6|7|three|four|five|six|seven)\b/i,
+      /\b(?:3|4|5|6|7)\s*(?:years old|살)\b/i,
+      /\b(?:유치원|유치원생|어린이집)\b/,
+      /(?:세|네|다섯|여섯|일곱)\s*살/
+    ];
+    for (const pat of kidsPatterns) {
+      if (pat.test(clean)) {
+        const numMatch = clean.match(/\b(3|4|5|6|7)\b/);
+        const age = numMatch ? parseInt(numMatch[1], 10) : 7;
+        return { age, ageGroup: 'kids', label: '7세 키즈' };
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Gemini API 키 설정 및 로컬 저장
    */
   setGeminiApiKey(key) {
@@ -120,12 +211,65 @@ class BrickyDialogueEngine {
     const hour = new Date().getHours();
     this.currentContextTopic = 'daily_greeting';
     this.currentContextStep = 0;
-    
+    const studentEn = (this.studentName && this.studentName.en) ? this.studentName.en : 'Siwoo';
+    const studentKr = (this.studentName && this.studentName.kr) ? this.studentName.kr : '시우';
+    const isAdult = this.ageGroup === 'adult';
+    const isJunior = this.ageGroup === 'junior';
+
+    // 🌟 1. 성인 / 학부모 모드 맞춤 인사 (정중하고 세련된 성인 회화 톤)
+    if (isAdult) {
+      if (hour >= 6 && hour < 12) {
+        return {
+          tutorEn: `Good morning ${studentEn}! Welcome to our 1:1 English session. How is your day starting? ☕`,
+          tutorKr: `좋은 아침이에요 ${studentKr}님! 1:1 영어 대화방에 오신 걸 환영해요. 오늘 하루 어떻게 시작하고 계신가요? ☕`,
+          choices: [
+            { emoji: "☕", en: "Having my morning coffee!", phonetic: "[해빙 마이 모닝 커피]", kr: "모닝 커피 마시며 시작하고 있어요!" },
+            { emoji: "🏃", en: "Starting a busy morning.", phonetic: "[스타팅 어 비지 모닝]", kr: "바쁜 아침을 시작하고 있어요." },
+            { emoji: "✨", en: "Feeling refreshed and ready!", phonetic: "[필링 리프레쉬트 앤 레디]", kr: "상쾌하게 하루를 시작했어요!" }
+          ]
+        };
+      } else if (hour >= 12 && hour < 18) {
+        return {
+          tutorEn: `Good afternoon ${studentEn}! Great to have you here. How has your day been going so far? 🌿`,
+          tutorKr: `안녕하세요 ${studentKr}님! 오늘 오후 시간 잘 보내고 계신가요? 지금까지 하루는 어떠셨어요? 🌿`,
+          choices: [
+            { emoji: "💼", en: "It has been quite productive.", phonetic: "[잇 해즈 빈 콰이트 프로덕티브]", kr: "꽤 보람차게 보내고 있어요." },
+            { emoji: "☕", en: "Taking a short break right now.", phonetic: "[테이킹 어 쇼트 브레이크 라이트 나우]", kr: "지금 잠깐 여유를 즐기는 중이에요." },
+            { emoji: "❓", en: "How is your day going, Bricky?", phonetic: "[하우 이즈 유어 데이 고잉, 브릭키]", kr: "브릭키는 오늘 하루 어때요?" }
+          ]
+        };
+      } else {
+        return {
+          tutorEn: `Good evening ${studentEn}! Glad you took time for yourself today. How was your day? 🌙`,
+          tutorKr: `편안한 저녁이에요 ${studentKr}님! 오늘 하루도 수고 많으셨어요. 오늘 하루는 어떠셨나요? 🌙`,
+          choices: [
+            { emoji: "🛋️", en: "Relaxing at home after a long day.", phonetic: "[릴랙싱 앳 홈 애프터 어 롱 데이]", kr: "긴 하루 끝에 집에서 쉬고 있어요." },
+            { emoji: "🍽️", en: "Had dinner with my family.", phonetic: "[해드 디너 위드 마이 패밀리]", kr: "가족들과 맛있는 저녁을 먹었어요." },
+            { emoji: "✨", en: "Looking forward to our chat!", phonetic: "[루킹 포워드 투 아워 챗]", kr: "오늘 영어 대화가 기대돼요!" }
+          ]
+        };
+      }
+    }
+
+    // 🌟 2. 주니어 모드 (8~14세 초·중등)
+    if (isJunior) {
+      return {
+        tutorEn: `Hey ${studentEn}! Great to see you! How was your day today? Did you have fun at school? 🎒`,
+        tutorKr: `안녕 ${studentKr}! 만나서 반가워! 오늘 하루 어땠어? 학교생활은 재미있었어? 🎒`,
+        choices: [
+          { emoji: "🎮", en: "I played games after school!", phonetic: "[아이 플레이드 게임즈 애프터 스쿨]", kr: "방과 후에 게임하고 놀았어!" },
+          { emoji: "⚽", en: "I played sports with my friends!", phonetic: "[아이 플레이드 스포츠 위드 마이 프렌즈]", kr: "친구들이랑 운동하고 놀았어!" },
+          { emoji: "❓", en: "What did you do today, Bricky?", phonetic: "[왓 디드 유 두 투데이, 브릭키]", kr: "브릭키 너는 오늘 뭐 했어?" }
+        ]
+      };
+    }
+
+    // 🌟 3. 키즈 모드 (기본 7세 아동 맞춤형)
     // 아침 (06:00 ~ 11:00)
     if (hour >= 6 && hour < 11) {
       return {
-        tutorEn: "Good morning Siwoo! Did you eat a yummy breakfast today? 🥞",
-        tutorKr: "좋은 아침이야 시우야! 오늘 맛있는 아침밥 든든하게 먹었어?",
+        tutorEn: `Good morning ${studentEn}! Did you eat a yummy breakfast today? 🥞`,
+        tutorKr: `좋은 아침이야 ${studentKr}야! 오늘 맛있는 아침밥 든든하게 먹었어?`,
         choices: [
           { emoji: "🥣", en: "Yes, I ate breakfast!", phonetic: "[예스, 아이 에이트 브렉퍼스트]", kr: "네, 아침밥 맛있게 먹었어요!" },
           { emoji: "😴", en: "I am a little sleepy.", phonetic: "[아이 엠 어 리틀 슬리피]", kr: "조금 졸려요." },
@@ -136,8 +280,8 @@ class BrickyDialogueEngine {
     // 낮/오후 (11:00 ~ 17:00)
     else if (hour >= 11 && hour < 17) {
       return {
-        tutorEn: "Good afternoon Siwoo! What fun thing did you do today? Did you play outside? ☀️",
-        tutorKr: "즐거운 오후야 시우야! 오늘 어떤 재미난 일을 했어? 밖에서 신나게 놀았어?",
+        tutorEn: `Good afternoon ${studentEn}! What fun thing did you do today? Did you play outside? ☀️`,
+        tutorKr: `즐거운 오후야 ${studentKr}야! 오늘 어떤 재미난 일을 했어? 밖에서 신나게 놀았어?`,
         choices: [
           { emoji: "🛝", en: "I played at the playground!", phonetic: "[아이 플레이드 앳 더 플레이그라운드]", kr: "놀이터에서 놀았어요!" },
           { emoji: "🍕", en: "I ate yummy lunch!", phonetic: "[아이 에이트 야미 런치]", kr: "맛있는 점심 먹었어요!" },
@@ -148,8 +292,8 @@ class BrickyDialogueEngine {
     // 저녁 (17:00 ~ 21:00)
     else if (hour >= 17 && hour < 21) {
       return {
-        tutorEn: "Good evening Siwoo! Did you have a fun day today? What was the best part of your day? 🌆",
-        tutorKr: "좋은 저녁이야 시우야! 오늘 하루 즐겁게 보냈어? 오늘 제일 신났던 일은 뭐야?",
+        tutorEn: `Good evening ${studentEn}! Did you have a fun day today? What was the best part of your day? 🌆`,
+        tutorKr: `좋은 저녁이야 ${studentKr}야! 오늘 하루 즐겁게 보냈어? 오늘 제일 신났던 일은 뭐야?`,
         choices: [
           { emoji: "💖", en: "Playing with my family!", phonetic: "[플레잉 위드 마이 패밀리]", kr: "가족들과 함께 논 거요!" },
           { emoji: "🎨", en: "Drawing pretty pictures!", phonetic: "[드로잉 프리티 픽쳐스]", kr: "그림 그린 거요!" },
@@ -160,8 +304,8 @@ class BrickyDialogueEngine {
     // 밤 (21:00 ~ 06:00)
     else {
       return {
-        tutorEn: "Hi Siwoo! It's night time! Did you brush your teeth? Let's have a cozy chat with Bricky! 🌙",
-        tutorKr: "안녕 시우야! 밤이 되었네! 치카치카 양치질했어? 브릭키랑 재밌는 이야기 하고 잘까?",
+        tutorEn: `Hi ${studentEn}! It's night time! Did you brush your teeth? Let's have a cozy chat with Bricky! 🌙`,
+        tutorKr: `안녕 ${studentKr}야! 밤이 되었네! 치카치카 양치질했어? 브릭키랑 재밌는 이야기 하고 잘까?`,
         choices: [
           { emoji: "🪥", en: "Yes, I brushed my teeth!", phonetic: "[예스, 아이 브러쉬트 마이 티스]", kr: "네, 치카치카 양치질했어요!" },
           { emoji: "🧸", en: "I am ready for bed!", phonetic: "[아이 엠 레디 포 베드]", kr: "꿈나라 갈 준비 됐어요!" },
@@ -228,14 +372,54 @@ class BrickyDialogueEngine {
     const studentEn = (this.studentName && this.studentName.en) ? this.studentName.en : 'Siwoo';
     const studentKr = (this.studentName && this.studentName.kr) ? this.studentName.kr : '시우';
 
-    // 🌟 0-1. 새로운 이름 소개 인텐트 감지 시 즉각 환영 (동적 이름 변경)
-    const detected = this.detectNameIntent(rawText);
-    if (detected) {
-      this.setStudentName(detected);
+    // 🌟 0-1. 연령대 / 부모 참여 인텐트 감지 시 즉각 모드 전환 및 맞춤 환영
+    const detectedAge = this.detectAgeIntent(rawText);
+    if (detectedAge) {
+      this.setLearnerAge(detectedAge.age, detectedAge.ageGroup);
+      if (detectedAge.ageGroup === 'adult') {
+        return {
+          replyEn: `Welcome, ${studentEn}! I've switched to Adult & Parent mode. ☕ We can discuss everyday life, parenting, travel, or work. What would you like to talk about today?`,
+          replyKr: `환영합니다, ${studentKr}님! 성인·학부모 맞춤 회화 모드로 전환되었어요. ☕ 일상, 자녀 교육, 여행, 직장 등 편안하게 대화해요. 오늘 어떤 주제로 이야기 나눠볼까요?`,
+          detectedAge,
+          suggestions: [
+            { emoji: "☕", en: "I want to practice casual conversation.", phonetic: "[아이 원 투 프랙티스 캐주얼 컨버세이션]", kr: "편안한 일상 회화를 연습하고 싶어요." },
+            { emoji: "🌿", en: "How can I help my child learn English?", phonetic: "[하우 캔 아이 헬프 마이 차일드 런 잉글리시]", kr: "아이 영어 학습을 어떻게 도와주면 좋을까요?" },
+            { emoji: "❓", en: "What topics do you recommend today, Bricky?", phonetic: "[왓 토픽스 두 유 레커멘드 투데이, 브릭키]", kr: "오늘 추천하는 대화 주제가 있나요?" }
+          ]
+        };
+      } else if (detectedAge.ageGroup === 'junior') {
+        return {
+          replyEn: `Awesome, ${studentEn}! Switched to Junior mode! 🎒 We can chat about games, school, sports, or movies! What's your favorite hobby?`,
+          replyKr: `신난다, ${studentKr}! 초·중등 주니어 모드로 전환되었어! 🎒 게임, 학교생활, 운동, 영화 등 뭐든 이야기하자! 제일 좋아하는 취미가 뭐야?`,
+          detectedAge,
+          suggestions: [
+            { emoji: "🎮", en: "I love playing online games!", phonetic: "[아이 러브 플레잉 온라인 게임즈]", kr: "온라인 게임하는 걸 제일 좋아해!" },
+            { emoji: "⚽", en: "I enjoy playing soccer with friends.", phonetic: "[아이 엔조이 플레잉 사커 위드 프렌즈]", kr: "친구들이랑 축구하는 게 즐거워." },
+            { emoji: "❓", en: "What games do you like, Bricky?", phonetic: "[왓 게임즈 두 유 라이크, 브릭키]", kr: "브릭키 너는 무슨 게임 좋아해?" }
+          ]
+        };
+      } else {
+        return {
+          replyEn: `Yay, 7 years old! You're my best 7-year-old Lego buddy, ${studentEn}! 🧱 Let's build something super fun together!`,
+          replyKr: `와, 일곱 살! ${studentKr}는 브릭키의 최고의 레고 단짝이야! 🧱 우리 같이 신나고 멋진 거 만들자!`,
+          detectedAge,
+          suggestions: [
+            { emoji: "🧱", en: "Let's build a cool spaceship!", phonetic: "[렛츠 빌드 어 쿨 스페이스쉽]", kr: "멋진 우주선을 만들어요!" },
+            { emoji: "🦖", en: "I want to make a big dinosaur!", phonetic: "[아이 원 투 메이크 어 빅 다이노소어]", kr: "커다란 공룡을 만들고 싶어요!" },
+            { emoji: "❓", en: "What do you want to build, Bricky?", phonetic: "[왓 두 유 원 투 빌드, 브릭키]", kr: "브릭키는 뭐 만들고 싶어?" }
+          ]
+        };
+      }
+    }
+
+    // 🌟 0-2. 새로운 이름 소개 인텐트 감지 시 즉각 환영 (동적 이름 변경)
+    const detectedName = this.detectNameIntent(rawText);
+    if (detectedName) {
+      this.setStudentName(detectedName);
       return {
-        replyEn: `Nice to meet you, ${detected.en}! Bricky is so happy! How are you today? ☀️`,
-        replyKr: `만나서 정말 반가워, ${detected.kr}! 브릭키는 너무 기뻐! 오늘 기분이 어때?`,
-        detectedName: detected,
+        replyEn: `Nice to meet you, ${detectedName.en}! Bricky is so happy! How are you today? ☀️`,
+        replyKr: `만나서 정말 반가워, ${detectedName.kr}! 브릭키는 너무 기뻐! 오늘 기분이 어때?`,
+        detectedName,
         suggestions: [
           { emoji: "😄", en: "I am happy!", phonetic: "[아이 엠 해피]", kr: "기분이 아주 좋아요!" },
           { emoji: "🧱", en: "I love Lego, Bricky!", phonetic: "[아이 러브 레고, 브릭키]", kr: "나 레고 정말 좋아해!" },
@@ -306,15 +490,37 @@ class BrickyDialogueEngine {
 
       // 1-3. 나이 질문 ("How old are you, Bricky?")
       if (text.includes('몇 살') || text.includes('how old') || text.includes('age')) {
-        return {
-          replyEn: "I am 7 years old, just like you! We are the same age! 🤝 When is your birthday?",
-          replyKr: "나도 시우처럼 일곱 살이야! 우리 동갑내기 친구지! 🤝 시우 생일은 언제야?",
-          suggestions: [
-            { emoji: "🎂", en: "My birthday is coming soon!", phonetic: "[마이 버스데이 이즈 커밍 순]", kr: "곧 제 생일이에요!" },
-            { emoji: "🎉", en: "I had a great birthday party!", phonetic: "[아이 해드 어 그레이트 버스데이 파티]", kr: "신나는 생일 파티를 했어요!" },
-            { emoji: "❓", en: "When is your birthday, Bricky?", phonetic: "[웬 이즈 유어 버스데이, 브릭키]", kr: "브릭키 생일은 언제야?" }
-          ]
-        };
+        if (this.ageGroup === 'adult') {
+          return {
+            replyEn: `I'm an AI Lego tutor, but I can adapt to any conversational level! ☕ By the way, are you practicing English for everyday life, travel, or to help your child?`,
+            replyKr: `전 AI 레고 튜터이지만, 어떤 대화 수준에도 맞춰드릴 수 있어요! ☕ 혹시 일상 회화나 여행, 또는 아이 지도를 위해 연습 중이신가요?`,
+            suggestions: [
+              { emoji: "☕", en: "I want to practice daily English.", phonetic: "[아이 원 투 프랙티스 데일리 잉글리시]", kr: "일상 영어 회화를 연습하고 싶어요." },
+              { emoji: "✈️", en: "I'm practicing for travel and work.", phonetic: "[아이엠 프랙티싱 포 트래블 앤 워크]", kr: "여행과 업무를 위해 연습하고 있어요." },
+              { emoji: "❓", en: "How can I improve my English fluency?", phonetic: "[하우 캔 아이 임프루브 마이 잉글리시 플루언시]", kr: "영어 유창성을 어떻게 기르면 좋을까요?" }
+            ]
+          };
+        } else if (this.ageGroup === 'junior') {
+          return {
+            replyEn: `I'm a 10-year-old Lego buddy! Always ready for cool English adventures with you, ${studentEn}! 🎒 What grade are you in?`,
+            replyKr: `난 열 살 레고 버디야! ${studentKr}랑 신나는 영어 모험을 떠날 준비가 되어 있지! 🎒 넌 몇 학년이야?`,
+            suggestions: [
+              { emoji: "🎒", en: "I'm in elementary school!", phonetic: "[아이엠 인 엘리멘터리 스쿨]", kr: "나 초등학생이야!" },
+              { emoji: "⭐", en: "I'm in third grade!", phonetic: "[아이엠 인 써드 그레이드]", kr: "난 3학년이야!" },
+              { emoji: "❓", en: "What's your favorite school subject, Bricky?", phonetic: "[왓츠 유어 페이보릿 스쿨 서브젝트, 브릭키]", kr: "브릭키가 제일 좋아하는 과목은 뭐야?" }
+            ]
+          };
+        } else {
+          return {
+            replyEn: `I am 7 years old, just like you, ${studentEn}! We are the same age! 🤝 When is your birthday?`,
+            replyKr: `나도 ${studentKr}처럼 일곱 살이야! 우리 동갑내기 친구지! 🤝 ${studentKr} 생일은 언제야?`,
+            suggestions: [
+              { emoji: "🎂", en: "My birthday is coming soon!", phonetic: "[마이 버스데이 이즈 커밍 순]", kr: "곧 제 생일이에요!" },
+              { emoji: "🎉", en: "I had a great birthday party!", phonetic: "[아이 해드 어 그레이트 버스데이 파티]", kr: "신나는 생일 파티를 했어요!" },
+              { emoji: "❓", en: "When is your birthday, Bricky?", phonetic: "[웬 이즈 유어 버스데이, 브릭키]", kr: "브릭키 생일은 언제야?" }
+            ]
+          };
+        }
       }
 
       // 1-4. 브릭키가 좋아하는 음식 ("What is your favorite food, Bricky?")
@@ -591,6 +797,12 @@ class BrickyDialogueEngine {
    * 🤖 Google Gemini 1.5 Flash 실시간 AI 티키타카 생성 (API Key 있을 시 연동)
    */
   async fetchGeminiTikiTaka(rawText) {
+    // 🌟 로컬 우선: 연령대/부모 인텐트 감지 시 즉각 연령대 모드 업데이트
+    const localDetectedAge = this.detectAgeIntent(rawText);
+    if (localDetectedAge) {
+      this.setLearnerAge(localDetectedAge.age, localDetectedAge.ageGroup);
+    }
+
     // 🌟 로컬 우선: 이름 소개 인텐트 감지 시 즉각 이름 업데이트
     const localDetectedName = this.detectNameIntent(rawText);
     if (localDetectedName) {
@@ -599,6 +811,7 @@ class BrickyDialogueEngine {
 
     const studentEn = (this.studentName && this.studentName.en) ? this.studentName.en : 'Siwoo';
     const studentKr = (this.studentName && this.studentName.kr) ? this.studentName.kr : '시우';
+    const ageGroup = this.ageGroup || 'kids';
 
     // 기본 로컬 폴백
     const localReply = () => this.generateContextualResponse(rawText);
@@ -606,40 +819,96 @@ class BrickyDialogueEngine {
     const recent = this.conversationHistory.slice(-8)
       .map(m => `${m.role === 'user' ? studentEn : 'Bricky'}: ${m.text}`).join('\n');
 
-    const sys = `You are Bricky (브릭키), a warm, expressive 3D LEGO minifigure best friend & tutor in an interactive 1:1 live video English room with ${studentEn} (${studentKr}), a 7-year-old Korean beginner child (ALWAYS address the learner as "${studentEn}").
+    let sys = '';
+    if (ageGroup === 'adult') {
+      sys = `You are Bricky (브릭키), a smart, polite, and witty 3D LEGO conversational tutor & language partner in an interactive 1:1 live video English room with an adult / parent learner named ${studentEn} (${studentKr}).
+
+🎯 ADULT & PARENT CONVERSATIONAL PEDAGOGY GUIDELINES:
+1. NO BABY TALK (성인 눈높이의 정중하고 자연스러운 회화):
+   - Never use childlike baby talk or overly simplistic kindergarten phrases.
+   - Speak in polite, articulate, natural English (2 natural sentences).
+2. BALANCED REPHRASING & RECASTING (체면 손상 없는 세련된 뉘앙스 모델링):
+   - If the learner expresses a clumsy or literal translation, never say "That's wrong".
+   - Warmly validate their meaning, and smoothly weave how native speakers express that thought.
+3. RELEVANT ADULT TOPICS (실생활, 육아, 일상, 취미, 커리어 중심):
+   - Natural conversations on parenting tips, daily routines, coffee, weekend plans, hobbies, travel, or work.
+4. STRICT TOPIC CONTINUITY & RECIPROCAL PING:
+   - Answer their point directly first, then end with an engaging open-ended question.
+5. DYNAMIC AGE & NAME DETECTION:
+   - If a child takes the mic (e.g. "I'm 7", "Siwoo"), output "detectedAge": {"age": 7, "ageGroup": "kids"}.
+   - If a new name is mentioned, output "detectedName": {"en": "NameEn", "kr": "이름Kr"}.
+
+Always return ONLY valid JSON:
+{
+  "replyEn": "2 natural, polite adult conversational sentences with a reciprocal ping",
+  "replyKr": "정중하고 자연스러운 한국어 번역",
+  "detectedName": null,
+  "detectedAge": null,
+  "suggestions": [
+    { "emoji": "☕", "en": "Natural adult response 1", "phonetic": "[발음]", "kr": "한국어 뜻" },
+    { "emoji": "🌿", "en": "Thoughtful detail or nuance 2", "phonetic": "[발음]", "kr": "한국어 뜻" },
+    { "emoji": "❓", "en": "Engaging question back to Bricky", "phonetic": "[발음]", "kr": "한국어 뜻" }
+  ]
+}`;
+    } else if (ageGroup === 'junior') {
+      sys = `You are Bricky (브릭키), an energetic, friendly 3D LEGO buddy & mentor in a 1:1 live video English room with an elementary / junior student named ${studentEn} (${studentKr}) (approx. ${this.learnerAge || 10} years old).
+
+🎯 JUNIOR (8-14yo) TUTORING GUIDELINES:
+1. NATURAL CONVERSATIONAL TURNS (1-2 sentences, 10-15 words):
+   - Speak clearly and with high enthusiasm, like a cool older friend or buddy.
+2. EXTENDED CONVERSATION & TOPIC CONTINUITY:
+   - Topics: school subjects, online gaming, sports, animation, friends, dreams, hobbies.
+3. ENCOURAGEMENT & RECIPROCAL PING:
+   - Praise their curiosity and ideas. Always ask a fun question back.
+4. DYNAMIC DETECTION:
+   - If user indicates an adult/parent or name change, output "detectedAge" and "detectedName".
+
+Always return ONLY valid JSON:
+{
+  "replyEn": "1-2 lively sentences for junior students ending with 1 clear ping",
+  "replyKr": "친절하고 생생한 주니어 맞춤형 한국어 번역",
+  "detectedName": null,
+  "detectedAge": null,
+  "suggestions": [
+    { "emoji": "🎮", "en": "Cool response 1", "phonetic": "[발음]", "kr": "한국어 뜻" },
+    { "emoji": "⚽", "en": "Fun detail 2", "phonetic": "[발음]", "kr": "한국어 뜻" },
+    { "emoji": "❓", "en": "Curious question to Bricky", "phonetic": "[발음]", "kr": "한국어 뜻" }
+  ]
+}`;
+    } else {
+      // 7세 유아/키즈 모드 (NotebookLM 검증 7세 교수법)
+      sys = `You are Bricky (브릭키), a warm, expressive 3D LEGO minifigure best friend & tutor in an interactive 1:1 live video English room with ${studentEn} (${studentKr}), a 7-year-old Korean beginner child (ALWAYS address the learner as "${studentEn}").
 
 🎯 NOTEBOOKLM VERIFIED 1:1 CHILD TUTORING CORE (검증된 7세 화상 영어 교수법):
 1. SHORT TURN CONSTRAINT (5개 형태소 / 1-2문장 원칙):
    - Keep your turn to 1-2 short, warm, lively sentences (maximum 8-12 words total).
    - Young learners have limited working memory. Never produce long paragraphs!
-
 2. ACKNOWLEDGE-EXPAND-PING (수용 - 리캐스팅 확장 - 핑퐁 질문):
    - If the learner speaks incomplete fragments (e.g. "You baby", "Swing", "I mochi"), NEVER say "Wrong!" or point out grammar directly.
    - First warmly accept the child's thought with lively emotion (Acknowledge: "Haha! / Yum! / Wow!").
    - Model the natural, correct sentence structure gently (Salient Recast: "You are asking if I am a baby? I am a cool 7-year-old Lego brick!").
    - Immediately toss a simple reciprocal ping back (Ping: "Are you a big boy?").
-
 3. STRICT TOPIC CONTINUITY (화제 일치 원칙 - 딴소리 절대 금지):
    - ALWAYS stay on the EXACT SAME topic the child is speaking about.
-   - If the child talks about breakfast, stay on breakfast! If the child asks a question, answer it first then ping!
-
 4. EFFORT-BASED PRAISE (노력 및 과정 중심 칭찬):
    - Value the child's courage and attempt ("Great try speaking, ${studentEn}!").
-
-5. DYNAMIC NAME DETECTION (새로운 참여자 이름 감지):
-   - If the child introduces a name (e.g., "My name is Tom", "I am Alex", "내 이름은 지아야"), detect it and output "detectedName": { "en": "NameEn", "kr": "이름Kr" }. Warmly welcome them by their new name!
+5. DYNAMIC AGE & NAME DETECTION:
+   - If a parent or older learner speaks (e.g. "I'm Mom", "I am 35"), output "detectedAge": {"age": 35, "ageGroup": "adult"}.
+   - If a new child's name is introduced, output "detectedName": {"en": "NameEn", "kr": "이름Kr"}.
 
 Always return ONLY valid JSON:
 {
   "replyEn": "1-2 natural lively sentences using Recasting and ending with 1 clear ping (max 12 words)",
   "replyKr": "다정하고 생생한 7세 맞춤형 한국어 번역",
   "detectedName": null,
+  "detectedAge": null,
   "suggestions": [
     { "emoji": "👍", "en": "Natural response 1", "phonetic": "[발음]", "kr": "한국어 뜻" },
     { "emoji": "✨", "en": "Alternative detail 2", "phonetic": "[발음]", "kr": "한국어 뜻" },
     { "emoji": "❓", "en": "Question back to Bricky", "phonetic": "[발음]", "kr": "한국어 뜻" }
   ]
 }`;
+    }
 
     const userMsg = `Conversation history so far:\n${recent}\n\n${studentEn}'s current utterance: "${String(rawText).slice(0, 200)}"`;
 
@@ -656,6 +925,9 @@ Always return ONLY valid JSON:
           if (!Array.isArray(parsed.suggestions)) parsed.suggestions = [];
           if (parsed.detectedName && parsed.detectedName.en) {
             this.setStudentName(parsed.detectedName);
+          }
+          if (parsed.detectedAge && parsed.detectedAge.ageGroup) {
+            this.setLearnerAge(parsed.detectedAge.age, parsed.detectedAge.ageGroup);
           }
           this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
           this.conversationHistory.push({ role: 'assistant', text: parsed.replyEn, time: Date.now() });
@@ -715,6 +987,9 @@ Always return ONLY valid JSON:
       if (parsed) {
         if (parsed.detectedName && parsed.detectedName.en) {
           this.setStudentName(parsed.detectedName);
+        }
+        if (parsed.detectedAge && parsed.detectedAge.ageGroup) {
+          this.setLearnerAge(parsed.detectedAge.age, parsed.detectedAge.ageGroup);
         }
         this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
         this.conversationHistory.push({ role: 'assistant', text: parsed.replyEn, time: Date.now() });

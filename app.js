@@ -93,7 +93,11 @@ class ZoomBrickTalkApp {
       pingpongActionsGroup: document.getElementById('pingpong-actions-group'),
       pingpongBadgeText: document.getElementById('pingpong-badge-text'),
       pingpongSendBtn: document.getElementById('pingpong-send-btn'),
-      pingpongRetryBtn: document.getElementById('pingpong-retry-btn')
+      pingpongRetryBtn: document.getElementById('pingpong-retry-btn'),
+      ageSwitcherPill: document.getElementById('age-switcher-pill'),
+      ageKidsBtn: document.getElementById('age-kids-btn'),
+      ageJuniorBtn: document.getElementById('age-junior-btn'),
+      ageAdultBtn: document.getElementById('age-adult-btn')
     };
 
     // 🌟 1:1 대화 모드 ('pingpong' | 'realtime', 기본값: 사용자가 원한 핑퐁 모드)
@@ -142,21 +146,68 @@ class ZoomBrickTalkApp {
   }
 
   /**
-   * 🌟 동적 학습자 이름 UI 실시간 갱신 (시우 외 다른 참여자 이름 인식 시 즉시 전환)
+   * 🌟 동적 학습자 프로필 UI 실시간 갱신 (이름 및 연령대 뱃지 동기화)
    */
-  updateStudentNameUI(nameObj) {
-    if (!nameObj) return;
+  updateStudentNameUI(nameObj = null) {
+    if (nameObj) {
+      this.dialogueEngine.setStudentName(nameObj);
+    }
+    this.updateStudentProfileUI();
+  }
+
+  /**
+   * 🌟 연령별/대상별 맞춤 프로필 UI 업데이트
+   */
+  updateStudentProfileUI() {
+    const nameObj = this.dialogueEngine.studentName || { en: 'Siwoo', kr: '시우' };
     const en = (nameObj.en || 'Siwoo').trim();
     const kr = (nameObj.kr || '시우').trim();
+    const ageGroup = this.dialogueEngine.ageGroup || 'kids';
+    const age = this.dialogueEngine.learnerAge || 7;
+
+    let ageLabel = '7세';
+    let emoji = '👦';
+    if (ageGroup === 'adult') {
+      ageLabel = '성인/학부모';
+      emoji = '🧑';
+    } else if (ageGroup === 'junior') {
+      ageLabel = `${age}세 주니어`;
+      emoji = '🎒';
+    } else {
+      ageLabel = `${age}세 키즈`;
+      emoji = '👦';
+    }
 
     if (this.dom.studentCamName) {
-      this.dom.studentCamName.textContent = `${kr} (${en}, 7세)`;
+      this.dom.studentCamName.textContent = `${kr} (${en}, ${ageLabel})`;
     }
     if (this.dom.studentSpeakerTag) {
-      this.dom.studentSpeakerTag.textContent = `👦 ${en}`;
+      this.dom.studentSpeakerTag.textContent = `${emoji} ${en}`;
     }
     if (this.dom.turnBannerText) {
-      this.dom.turnBannerText.textContent = `${kr} 차례예요! 지금 말해보세요!`;
+      this.dom.turnBannerText.textContent = `${kr} 차례예요! 지금 말씀해보세요!`;
+    }
+
+    // 상단 헤더 연령 스위처 버튼 상태 동기화
+    if (this.dom.ageKidsBtn) this.dom.ageKidsBtn.classList.toggle('active', ageGroup === 'kids');
+    if (this.dom.ageJuniorBtn) this.dom.ageJuniorBtn.classList.toggle('active', ageGroup === 'junior');
+    if (this.dom.ageAdultBtn) this.dom.ageAdultBtn.classList.toggle('active', ageGroup === 'adult');
+  }
+
+  /**
+   * 🌟 학습자 연령대 모드 변경 (Kids vs Junior vs Adult)
+   */
+  setLearnerAgeGroup(group, age = null) {
+    this.dialogueEngine.setLearnerAge(age, group);
+    this.updateStudentProfileUI();
+
+    const name = (this.dialogueEngine.studentName && this.dialogueEngine.studentName.kr) || '학습자';
+    if (group === 'adult') {
+      this.showPraise(`☕ 성인·학부모 모드로 전환되었습니다! (${name}님)`);
+    } else if (group === 'junior') {
+      this.showPraise(`🎒 초·중등 주니어 모드로 전환되었습니다! (${name})`);
+    } else {
+      this.showPraise(`👶 7세 키즈 모드로 전환되었습니다! (${name})`);
     }
   }
 
@@ -514,16 +565,28 @@ class ZoomBrickTalkApp {
       this.dom.studentPanel.classList.remove('active-speaking');
     }, 2500);
 
-    // 2. 유의미한 발화일 때만 NotebookLM 교수법 기반 노력/행동 중심 칭찬 및 브릭 스타 지급
+    // 2. 유의미한 발화일 때만 교수법 기반 격려 및 브릭 스타 지급
     const currentNameEn = (this.dialogueEngine.studentName && this.dialogueEngine.studentName.en) || 'Siwoo';
+    const isAdult = this.dialogueEngine.ageGroup === 'adult';
     if (!isUnclear) {
-      const effortPraises = [
-        `Awesome effort, ${currentNameEn}! "${finalEn}" ⭐+1`,
-        `Super clear voice, ${currentNameEn}! "${finalEn}" ⭐+1`,
-        `Proud of your try, ${currentNameEn}! "${finalEn}" ⭐+1`,
-        `Great English speaking, ${currentNameEn}! "${finalEn}" ⭐+1`
-      ];
-      const picked = effortPraises[Math.floor(Math.random() * effortPraises.length)];
+      let picked = '';
+      if (isAdult) {
+        const adultPraises = [
+          `Great expression, ${currentNameEn}! "${finalEn}" ⭐+1`,
+          `Very natural English, ${currentNameEn}! "${finalEn}" ⭐+1`,
+          `Clear and confident speaking! "${finalEn}" ⭐+1`,
+          `Smooth conversation flow, ${currentNameEn}! "${finalEn}" ⭐+1`
+        ];
+        picked = adultPraises[Math.floor(Math.random() * adultPraises.length)];
+      } else {
+        const effortPraises = [
+          `Awesome effort, ${currentNameEn}! "${finalEn}" ⭐+1`,
+          `Super clear voice, ${currentNameEn}! "${finalEn}" ⭐+1`,
+          `Proud of your try, ${currentNameEn}! "${finalEn}" ⭐+1`,
+          `Great English speaking, ${currentNameEn}! "${finalEn}" ⭐+1`
+        ];
+        picked = effortPraises[Math.floor(Math.random() * effortPraises.length)];
+      }
       this.showPraise(picked);
       this.addStar(1);
     }
@@ -531,9 +594,9 @@ class ZoomBrickTalkApp {
     // 3. 지능형 멀티턴 티키타카 반응 생성 (Gemini API 또는 내장 멀티턴 엔진)
     const context = await this.dialogueEngine.fetchGeminiTikiTaka(finalEn);
 
-    // 🌟 새로운 이름이 인식되었을 경우 화면 이름표 및 화자 태그 즉각 동기화
-    if (context.detectedName || this.dialogueEngine.studentName) {
-      this.updateStudentNameUI(this.dialogueEngine.studentName);
+    // 🌟 새로운 이름이나 연령대가 감지되었을 경우 화면 프로필 및 상단 스위처 즉각 동기화
+    if (context.detectedName || context.detectedAge || this.dialogueEngine.studentName) {
+      this.updateStudentProfileUI();
     }
 
     setTimeout(() => {
@@ -856,6 +919,26 @@ class ZoomBrickTalkApp {
       this.dom.modeRealtimeBtn.addEventListener('click', () => {
         if (window.kidSounds) window.kidSounds.playPop();
         this.setDialogueMode('realtime');
+      });
+    }
+
+    // 🌟 연령별 맞춤 교수법 스위처 버튼 이벤트
+    if (this.dom.ageKidsBtn) {
+      this.dom.ageKidsBtn.addEventListener('click', () => {
+        if (window.kidSounds) window.kidSounds.playPop();
+        this.setLearnerAgeGroup('kids', 7);
+      });
+    }
+    if (this.dom.ageJuniorBtn) {
+      this.dom.ageJuniorBtn.addEventListener('click', () => {
+        if (window.kidSounds) window.kidSounds.playPop();
+        this.setLearnerAgeGroup('junior', 10);
+      });
+    }
+    if (this.dom.ageAdultBtn) {
+      this.dom.ageAdultBtn.addEventListener('click', () => {
+        if (window.kidSounds) window.kidSounds.playPop();
+        this.setLearnerAgeGroup('adult', 35);
       });
     }
 
