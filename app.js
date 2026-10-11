@@ -843,19 +843,21 @@ class ZoomBrickTalkApp {
       });
     }
 
-    // 🌟 지우고 다시 말하기 버튼
+    // 🌟 지우고 다시 말하기 버튼 (음성인식 즉각 리셋 및 마이크 재가동)
     if (this.dom.pingpongRetryBtn) {
       this.dom.pingpongRetryBtn.addEventListener('click', () => {
         if (window.kidSounds) window.kidSounds.playPop();
         this.currentPendingText = '';
         if (this.dom.studentSpokenText) this.dom.studentSpokenText.textContent = '"말씀하시거나 아래 추천 문장을 눌러보세요!"';
         if (this.dom.studentSpokenKr) this.dom.studentSpokenKr.textContent = '"천천히 편하게 말씀하시고 [대화 보내기]를 눌러주세요!"';
-        if (this.dom.pingpongBadgeText) this.dom.pingpongBadgeText.textContent = "말씀하시면 여기에 큰 글씨로 작성돼요! 🎤";
+        if (this.dom.pingpongBadgeText) this.dom.pingpongBadgeText.textContent = "🎙️ 시우야, 다시 말씀해주세요! 귀 기울여 듣고 있어요!";
         if (this.dom.pingpongSendBtn) this.dom.pingpongSendBtn.classList.add('disabled');
+        
+        // 🌟 [핵심 수정] 음성 인식 버퍼 리셋 & 마이크 세션 즉시 재구동!
         if (window.kidSpeech) {
-          window.kidSpeech.speechBuffer = '';
-          window.kidSpeech.latestInterim = '';
+          window.kidSpeech.resetAndListen();
         }
+        this.triggerMicAutoStart();
       });
     }
 

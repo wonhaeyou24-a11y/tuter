@@ -144,37 +144,7 @@ html, body {
   border-radius: 4px;
 }
 
-/* 주제 탭 바 */
-.topic-tabs-group {
-  display: flex;
-  gap: 6px;
-  margin-left: 10px;
-}
 
-.topic-tab-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #94A3B8;
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.topic-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #FFFFFF;
-}
-
-.topic-tab-btn.active {
-  background: var(--lego-blue);
-  border-color: #66B0FF;
-  color: #FFFFFF;
-  box-shadow: 0 3px 0 var(--lego-blue-dark);
-  font-weight: 800;
-}
 
 .header-right {
   display: flex;
@@ -1418,14 +1388,6 @@ html, body {
     -webkit-touch-callout: none;
   }
 
-  .topic-tabs-group {
-    max-width: 320px;
-  }
-
-  .topic-tab-btn {
-    padding: 5px 12px;
-    font-size: 11.5px;
-  }
 
   /* 터치 편의를 위한 하단 액션 바 높이 및 여백 확보 */
   .call-dock-footer {

@@ -102,12 +102,16 @@ class KidSpeechEngine {
       };
 
       this.recognition.onend = () => {
-        // 브릭키가 말하고 있지 않고 듣기 모드라면 자동 유지
+        // 브릭키가 말하고 있지 않고 듣기 모드라면 비동기 딜레이 후 자동 재연결 유지 (마이크 죽음 방지)
         if (this.isListening && !this.isTutorSpeaking && !this.pausedForTTS) {
-          try {
-            this.recognition.start();
-            return;
-          } catch (e) {}
+          setTimeout(() => {
+            try {
+              if (this.isListening && !this.isTutorSpeaking && !this.pausedForTTS && this.recognition) {
+                this.recognition.start();
+              }
+            } catch (e) {}
+          }, 80);
+          return;
         }
         this.isListening = false;
         if (this.onStatusChangeCallback) this.onStatusChangeCallback(false);
@@ -413,6 +417,40 @@ class KidSpeechEngine {
         this.recognition.stop();
       }
     } catch (e) {}
+  }
+
+  /**
+   * 🌟 [다시 말하기 전용] 이전 버퍼 완전 초기화 & 마이크 세션 강제 재구동
+   */
+  resetAndListen() {
+    try {
+      if (this.speechEndTimer) {
+        clearTimeout(this.speechEndTimer);
+        this.speechEndTimer = null;
+      }
+      this.speechBuffer = '';
+      this.latestInterim = '';
+      this.isListening = true;
+
+      if (this.recognition) {
+        try { this.recognition.abort(); } catch (e) {}
+      }
+
+      setTimeout(() => {
+        try {
+          if (!this.isTutorSpeaking && !this.pausedForTTS && this.recognition) {
+            this.recognition.start();
+            if (this.onStatusChangeCallback) this.onStatusChangeCallback(true);
+          }
+        } catch (e) {
+          // 이미 실행 중이면 유지
+        }
+      }, 100);
+      return true;
+    } catch (err) {
+      console.warn('[resetAndListen 예외 방지]:', err);
+      return false;
+    }
   }
 
   /**
