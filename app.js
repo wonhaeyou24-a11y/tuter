@@ -41,6 +41,9 @@ class ZoomBrickTalkApp {
       camIcon: document.getElementById('cam-icon'),
       camLabel: document.getElementById('cam-label'),
       userCamStatusDot: document.getElementById('user-cam-status-dot'),
+      studentCamName: document.getElementById('student-cam-name'),
+      studentSpeakerTag: document.getElementById('student-speaker-tag'),
+      turnBannerText: document.getElementById('turn-banner-text'),
       liveTag: document.getElementById('live-tag'),
       liveTagText: document.getElementById('live-tag-text'),
       studentSpeechPill: document.getElementById('student-speech-pill'),
@@ -120,6 +123,7 @@ class ZoomBrickTalkApp {
       }
 
       this.updateStarUI();
+      this.updateStudentNameUI(this.dialogueEngine.studentName);
       this.bindEvents();
       this.updateAiStatusUI();
       this.startCallTimer();
@@ -134,6 +138,25 @@ class ZoomBrickTalkApp {
       }, 700);
     } catch (e) {
       console.error('[화상통화 앱 초기화 예외 방지]:', e);
+    }
+  }
+
+  /**
+   * 🌟 동적 학습자 이름 UI 실시간 갱신 (시우 외 다른 참여자 이름 인식 시 즉시 전환)
+   */
+  updateStudentNameUI(nameObj) {
+    if (!nameObj) return;
+    const en = (nameObj.en || 'Siwoo').trim();
+    const kr = (nameObj.kr || '시우').trim();
+
+    if (this.dom.studentCamName) {
+      this.dom.studentCamName.textContent = `${kr} (${en}, 7세)`;
+    }
+    if (this.dom.studentSpeakerTag) {
+      this.dom.studentSpeakerTag.textContent = `👦 ${en}`;
+    }
+    if (this.dom.turnBannerText) {
+      this.dom.turnBannerText.textContent = `${kr} 차례예요! 지금 말해보세요!`;
     }
   }
 
@@ -492,12 +515,13 @@ class ZoomBrickTalkApp {
     }, 2500);
 
     // 2. 유의미한 발화일 때만 NotebookLM 교수법 기반 노력/행동 중심 칭찬 및 브릭 스타 지급
+    const currentNameEn = (this.dialogueEngine.studentName && this.dialogueEngine.studentName.en) || 'Siwoo';
     if (!isUnclear) {
       const effortPraises = [
-        `Awesome effort, Siwoo! "${finalEn}" ⭐+1`,
-        `Super clear voice, Siwoo! "${finalEn}" ⭐+1`,
-        `Proud of your try! "${finalEn}" ⭐+1`,
-        `Great English speaking, Siwoo! "${finalEn}" ⭐+1`
+        `Awesome effort, ${currentNameEn}! "${finalEn}" ⭐+1`,
+        `Super clear voice, ${currentNameEn}! "${finalEn}" ⭐+1`,
+        `Proud of your try, ${currentNameEn}! "${finalEn}" ⭐+1`,
+        `Great English speaking, ${currentNameEn}! "${finalEn}" ⭐+1`
       ];
       const picked = effortPraises[Math.floor(Math.random() * effortPraises.length)];
       this.showPraise(picked);
@@ -506,6 +530,11 @@ class ZoomBrickTalkApp {
 
     // 3. 지능형 멀티턴 티키타카 반응 생성 (Gemini API 또는 내장 멀티턴 엔진)
     const context = await this.dialogueEngine.fetchGeminiTikiTaka(finalEn);
+
+    // 🌟 새로운 이름이 인식되었을 경우 화면 이름표 및 화자 태그 즉각 동기화
+    if (context.detectedName || this.dialogueEngine.studentName) {
+      this.updateStudentNameUI(this.dialogueEngine.studentName);
+    }
 
     setTimeout(() => {
       this.setTutorState('speaking');
@@ -582,8 +611,9 @@ class ZoomBrickTalkApp {
       setTimeout(() => {
         if (!this.isTutorSpeaking) {
           this.showYourTurnImpact();
+          const studentKr = (this.dialogueEngine && this.dialogueEngine.studentName && this.dialogueEngine.studentName.kr) || '시우';
           if (this.dom.pingpongBadgeText) {
-            this.dom.pingpongBadgeText.textContent = "👦 시우 차례예요! (말씀하시면 여기에 작성돼요)";
+            this.dom.pingpongBadgeText.textContent = `👦 ${studentKr} 차례예요! (말씀하시면 여기에 작성돼요)`;
           }
           if (this.dom.pingpongEnText) {
             this.dom.pingpongEnText.textContent = '"말씀하시거나 아래 추천 문장을 눌러보세요! 🎤"';

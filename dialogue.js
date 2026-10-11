@@ -15,6 +15,84 @@ class BrickyDialogueEngine {
     this.currentContextTopic = 'greeting';
     this.currentContextStep = 0;
     this.geminiApiKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('bricktalk_gemini_key') : '') || '';
+
+    // 🌟 동적 학습자 이름 (기본값: 시우, 상황에 따라 다른 사람이 참여 시 실시간 자동 전환)
+    try {
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('bricktalk_student_name') : null;
+      this.studentName = saved ? JSON.parse(saved) : { en: 'Siwoo', kr: '시우' };
+    } catch (e) {
+      this.studentName = { en: 'Siwoo', kr: '시우' };
+    }
+  }
+
+  /**
+   * 🌟 학습자 이름 설정 및 로컬스토리지 저장
+   */
+  setStudentName(nameObj) {
+    if (!nameObj || !nameObj.en) return;
+    this.studentName = {
+      en: nameObj.en.trim(),
+      kr: (nameObj.kr || nameObj.en).trim()
+    };
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('bricktalk_student_name', JSON.stringify(this.studentName));
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * 🌟 발화 내용 중 새로운 이름 소개 인텐트 감지 (영어 및 한국어 정밀 패턴)
+   */
+  detectNameIntent(rawText) {
+    if (!rawText || typeof rawText !== 'string') return null;
+    const clean = rawText.replace(/["'“”‘’.,!?]/g, '').trim();
+
+    // 1. 영어 명시적 패턴: "My name is Tom", "Call me Alex", "This is Sarah"
+    const myNameMatch = clean.match(/\bmy name is\s+([A-Za-z가-힣]+)/i);
+    if (myNameMatch) {
+      const name = myNameMatch[1];
+      const en = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+      return { en, kr: name };
+    }
+    const callMeMatch = clean.match(/\bcall me\s+([A-Za-z가-힣]+)/i);
+    if (callMeMatch) {
+      const name = callMeMatch[1];
+      const en = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+      return { en, kr: name };
+    }
+
+    // 2. "I am [Name]" / "I'm [Name]" 패턴 (단, 감정/상태 형용사 제외)
+    const iAmMatch = clean.match(/\b(?:i am|i'm|im)\s+([A-Za-z]+)\b/i);
+    if (iAmMatch) {
+      const candidate = iAmMatch[1].toLowerCase();
+      const nonNames = [
+        'happy', 'sleepy', 'hungry', 'tired', 'fine', 'good', 'sad', 'ready', 'here',
+        'a', 'the', 'boy', 'girl', 'big', 'small', 'seven', 'six', 'eight', 'cool',
+        'super', 'eating', 'doing', 'playing', 'outside', 'inside', 'sorry', 'okay', 'great'
+      ];
+      if (!nonNames.includes(candidate) && candidate.length >= 2) {
+        const en = candidate.charAt(0).toUpperCase() + candidate.slice(1);
+        return { en, kr: en };
+      }
+    }
+
+    // 3. 한국어 패턴: "내 이름은 민우야", "나는 서연이야", "지아라고 불러줘"
+    const krNameMatch = clean.match(/(?:내\s*이름은|난|나는)\s+([가-힣]{2,4})(?:이야|야|이에요|입니다|다)?/);
+    if (krNameMatch) {
+      const kr = krNameMatch[1];
+      const nonKr = ['행복해', '배고파', '졸려', '심심해', '피곤해', '레고', '친구', '멋진', '남자', '여자'];
+      if (!nonKr.includes(kr)) {
+        return { en: kr, kr };
+      }
+    }
+    const krCallMatch = clean.match(/([가-힣]{2,4})(?:이라고|라고)\s*(?:불러줘|해)/);
+    if (krCallMatch) {
+      const kr = krCallMatch[1];
+      return { en: kr, kr };
+    }
+
+    return null;
   }
 
   /**
@@ -147,12 +225,43 @@ class BrickyDialogueEngine {
    */
   generateContextualResponse(rawText) {
     const text = (rawText || '').trim().toLowerCase();
+    const studentEn = (this.studentName && this.studentName.en) ? this.studentName.en : 'Siwoo';
+    const studentKr = (this.studentName && this.studentName.kr) ? this.studentName.kr : '시우';
 
-    // 🌟 0. 잡음 / 망설임 / 못 들었을 때 다정한 재요청
+    // 🌟 0-1. 새로운 이름 소개 인텐트 감지 시 즉각 환영 (동적 이름 변경)
+    const detected = this.detectNameIntent(rawText);
+    if (detected) {
+      this.setStudentName(detected);
+      return {
+        replyEn: `Nice to meet you, ${detected.en}! Bricky is so happy! How are you today? ☀️`,
+        replyKr: `만나서 정말 반가워, ${detected.kr}! 브릭키는 너무 기뻐! 오늘 기분이 어때?`,
+        detectedName: detected,
+        suggestions: [
+          { emoji: "😄", en: "I am happy!", phonetic: "[아이 엠 해피]", kr: "기분이 아주 좋아요!" },
+          { emoji: "🧱", en: "I love Lego, Bricky!", phonetic: "[아이 러브 레고, 브릭키]", kr: "나 레고 정말 좋아해!" },
+          { emoji: "❓", en: "How are you, Bricky?", phonetic: "[하우 아 유, 브릭키]", kr: "브릭키는 기분이 어때?" }
+        ]
+      };
+    }
+
+    // 🌟 0-2. NotebookLM Recast 적용: "You baby"와 같은 단어형 발화 수용 및 확장
+    if (text.includes('you baby') || text.includes('baby')) {
+      return {
+        replyEn: `Haha, are you asking if I'm a baby? I'm a cool Lego brick! Are you a big boy, ${studentEn}? 🧱`,
+        replyKr: `하하, 내가 아기냐고 물어본 거야? 난 멋진 레고 블록이야! ${studentKr}는 멋진 형님이지?`,
+        suggestions: [
+          { emoji: "👦", en: "I am a big boy!", phonetic: "[아이 엠 어 빅 보이]", kr: "나 멋진 형님이야!" },
+          { emoji: "🧱", en: "You are a cool Lego brick!", phonetic: "[유아 어 쿨 레고 브릭]", kr: "너 정말 멋진 레고 블록이야!" },
+          { emoji: "🎂", en: "How old are you, Bricky?", phonetic: "[하우 올드 아 유, 브릭키]", kr: "브릭키 너는 몇 살이야?" }
+        ]
+      };
+    }
+
+    // 🌟 0-3. 잡음 / 망설임 / 못 들었을 때 다정한 재요청
     if (this.isUnclearSpeech(rawText)) {
       return {
-        replyEn: "Pardon, Siwoo? Bricky is listening! Can you say that again? 👂",
-        replyKr: "시우야, 브릭키가 귀를 쫑긋 세웠어! 한 번만 다시 말해줄래? 👂",
+        replyEn: `Pardon, ${studentEn}? Bricky is listening! Can you say that again? 👂`,
+        replyKr: `${studentKr}야, 브릭키가 귀를 쫑긋 세웠어! 한 번만 다시 말해줄래? 👂`,
         suggestions: [
           { emoji: "👂", en: "Listen to me, Bricky!", phonetic: "[리슨 투 미, 브릭키]", kr: "브릭키 잘 들어봐요!" },
           { emoji: "🗣️", en: "Let me say it again!", phonetic: "[렛 미 세이 잇 어게인]", kr: "다시 한 번 말해볼게요!" },
@@ -482,46 +591,57 @@ class BrickyDialogueEngine {
    * 🤖 Google Gemini 1.5 Flash 실시간 AI 티키타카 생성 (API Key 있을 시 연동)
    */
   async fetchGeminiTikiTaka(rawText) {
-    // 기본: 실시간 양방향 티키타카 엔진 (정형화된 문장 반복이 아닌 살아있는 상호 대화)
+    // 🌟 로컬 우선: 이름 소개 인텐트 감지 시 즉각 이름 업데이트
+    const localDetectedName = this.detectNameIntent(rawText);
+    if (localDetectedName) {
+      this.setStudentName(localDetectedName);
+    }
+
+    const studentEn = (this.studentName && this.studentName.en) ? this.studentName.en : 'Siwoo';
+    const studentKr = (this.studentName && this.studentName.kr) ? this.studentName.kr : '시우';
+
+    // 기본 로컬 폴백
     const localReply = () => this.generateContextualResponse(rawText);
 
     const recent = this.conversationHistory.slice(-8)
-      .map(m => `${m.role === 'user' ? 'Siwoo' : 'Bricky'}: ${m.text}`).join('\n');
+      .map(m => `${m.role === 'user' ? studentEn : 'Bricky'}: ${m.text}`).join('\n');
 
-    const sys = `You are Bricky (브릭키), a warm, expressive 3D LEGO minifigure best friend & English tutor in an interactive 1:1 live video class with Siwoo (시우), a 7-year-old Korean beginner boy (ALWAYS call him "Siwoo", NEVER "Kai").
+    const sys = `You are Bricky (브릭키), a warm, expressive 3D LEGO minifigure best friend & tutor in an interactive 1:1 live video English room with ${studentEn} (${studentKr}), a 7-year-old Korean beginner child (ALWAYS address the learner as "${studentEn}").
 
-🎯 HUMAN-LIKE FRIENDSHIP CHAT CORE (동일 화제 꼬리물기 상호 대화):
-1. STRICT TOPIC CONTINUITY (화제 일치 원칙 - 딴소리 절대 금지):
-   - ALWAYS stay on the EXACT SAME topic Siwoo is talking about.
-   - If Siwoo asks "What is your favorite food, Bricky?", answer your favorite food warmly AND ask if Siwoo likes it too! NEVER suddenly ask an unrelated choice like "Do you want ice cream or cookies?".
-   - If Siwoo asks "How old are you, Bricky?", say "I am 7 years old too! When is your birthday?". NEVER ask "Lego or tag?".
-   - If Siwoo says he rode a slide, empathize with the slide ("Whoosh! Was it super exciting?")!
+🎯 NOTEBOOKLM VERIFIED 1:1 CHILD TUTORING CORE (검증된 7세 화상 영어 교수법):
+1. SHORT TURN CONSTRAINT (5개 형태소 / 1-2문장 원칙):
+   - Keep your turn to 1-2 short, warm, lively sentences (maximum 8-12 words total).
+   - Young learners have limited working memory. Never produce long paragraphs!
 
-2. NATURAL 7-YEAR-OLD FRIEND TALK (친근하고 자연스러운 친구 대화):
-   - Keep your turn to 1-2 short, warm, lively sentences (total 7-12 words maximum).
-   - React with emotion first (Yum! / Whoosh! / Awesome! / High five!).
-   - Share Bricky's feeling or preference briefly, then toss a gentle reciprocal ping back to Siwoo.
-   - NO rigid, textbook quizzes. Talk like a real 7-year-old best friend!
+2. ACKNOWLEDGE-EXPAND-PING (수용 - 리캐스팅 확장 - 핑퐁 질문):
+   - If the learner speaks incomplete fragments (e.g. "You baby", "Swing", "I mochi"), NEVER say "Wrong!" or point out grammar directly.
+   - First warmly accept the child's thought with lively emotion (Acknowledge: "Haha! / Yum! / Wow!").
+   - Model the natural, correct sentence structure gently (Salient Recast: "You are asking if I am a baby? I am a cool 7-year-old Lego brick!").
+   - Immediately toss a simple reciprocal ping back (Ping: "Are you a big boy?").
 
-3. 3 REAL CONVERSATIONAL SUGGESTIONS (시우가 진짜 자기 생각을 말할 수 있는 생생한 문장 카드 3개):
-   - Option 1: A natural enthusiastic response / agreement (e.g. "Yes, I love pizza too!").
-   - Option 2: An alternative personal choice / detail (e.g. "I like crispy chicken more!").
-   - Option 3: A reciprocal question back to Bricky (e.g. "What is your favorite topping, Bricky?").
-   - Every suggestion must be a natural, complete spoken sentence suitable for a 7-year-old with phonetics and Korean meaning.
+3. STRICT TOPIC CONTINUITY (화제 일치 원칙 - 딴소리 절대 금지):
+   - ALWAYS stay on the EXACT SAME topic the child is speaking about.
+   - If the child talks about breakfast, stay on breakfast! If the child asks a question, answer it first then ping!
 
-Current Topic: ${this.currentTopicKey || 'daily'}
+4. EFFORT-BASED PRAISE (노력 및 과정 중심 칭찬):
+   - Value the child's courage and attempt ("Great try speaking, ${studentEn}!").
+
+5. DYNAMIC NAME DETECTION (새로운 참여자 이름 감지):
+   - If the child introduces a name (e.g., "My name is Tom", "I am Alex", "내 이름은 지아야"), detect it and output "detectedName": { "en": "NameEn", "kr": "이름Kr" }. Warmly welcome them by their new name!
+
 Always return ONLY valid JSON:
 {
-  "replyEn": "1-2 natural lively sentences on the same topic (max 12 words total)",
-  "replyKr": "Warm, natural 7yo Korean friend translation",
+  "replyEn": "1-2 natural lively sentences using Recasting and ending with 1 clear ping (max 12 words)",
+  "replyKr": "다정하고 생생한 7세 맞춤형 한국어 번역",
+  "detectedName": null,
   "suggestions": [
-    { "emoji": "🍕", "en": "Natural response 1", "phonetic": "[발음]", "kr": "한국어 뜻" },
-    { "emoji": "🍗", "en": "Natural response 2", "phonetic": "[발음]", "kr": "한국어 뜻" },
+    { "emoji": "👍", "en": "Natural response 1", "phonetic": "[발음]", "kr": "한국어 뜻" },
+    { "emoji": "✨", "en": "Alternative detail 2", "phonetic": "[발음]", "kr": "한국어 뜻" },
     { "emoji": "❓", "en": "Question back to Bricky", "phonetic": "[발음]", "kr": "한국어 뜻" }
   ]
 }`;
 
-    const userMsg = `Conversation history so far:\n${recent}\n\nSiwoo's current utterance: "${String(rawText).slice(0, 200)}"`;
+    const userMsg = `Conversation history so far:\n${recent}\n\n${studentEn}'s current utterance: "${String(rawText).slice(0, 200)}"`;
 
     // 🌟 1순위: 로컬 보안 AI 서버 (/api/chat) 호출 (환경변수 키 자동 사용으로 100% 실시간 대화!)
     try {
@@ -534,6 +654,9 @@ Always return ONLY valid JSON:
         const parsed = await proxyRes.json();
         if (parsed.replyEn && parsed.replyKr) {
           if (!Array.isArray(parsed.suggestions)) parsed.suggestions = [];
+          if (parsed.detectedName && parsed.detectedName.en) {
+            this.setStudentName(parsed.detectedName);
+          }
           this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
           this.conversationHistory.push({ role: 'assistant', text: parsed.replyEn, time: Date.now() });
           this.lastGeminiError = null;
@@ -590,6 +713,9 @@ Always return ONLY valid JSON:
       }
 
       if (parsed) {
+        if (parsed.detectedName && parsed.detectedName.en) {
+          this.setStudentName(parsed.detectedName);
+        }
         this.conversationHistory.push({ role: 'user', text: rawText, time: Date.now() });
         this.conversationHistory.push({ role: 'assistant', text: parsed.replyEn, time: Date.now() });
         return parsed;

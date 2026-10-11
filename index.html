@@ -124,7 +124,7 @@
           <!-- 🌟 시우 발화 턴 비주얼 임팩트 배너 (내가 말해야 할 타이밍에 나타남) -->
           <div class="turn-indicator-banner" id="turn-indicator-banner" style="display: none;">
             <span class="turn-pulse-icon">🎙️</span>
-            <span class="turn-text">시우 차례예요! 지금 말해보세요!</span>
+            <span class="turn-text" id="turn-banner-text">시우 차례예요! 지금 말해보세요!</span>
             <span class="turn-sparkle">✨</span>
           </div>
 
@@ -140,7 +140,7 @@
           <!-- 우측 하단 이름표 (위치 살짝 조정) -->
           <div class="feed-overlay-tag student-tag">
             <span class="tag-status-dot green" id="user-cam-status-dot"></span>
-            <span class="tag-name">시우 (Siwoo, 7세)</span>
+            <span class="tag-name" id="student-cam-name">시우 (Siwoo, 7세)</span>
             <div class="audio-wave-meter" id="audio-wave-meter">
               <span></span><span></span><span></span><span></span>
             </div>
@@ -150,7 +150,7 @@
           <div class="kai-subtitle-bar wide-dock-bar active" id="student-speech-pill">
             <div class="kai-spoken-left">
               <div class="kai-speaker-tag-row">
-                <span class="kai-speaker-tag">👦 Siwoo</span>
+                <span class="kai-speaker-tag" id="student-speaker-tag">👦 Siwoo</span>
                 <span class="kai-speech-badge" id="pingpong-badge-text">말씀하시면 여기에 큰 글씨로 작성돼요! 🎤</span>
               </div>
               <div class="kai-spoken-wrap">
